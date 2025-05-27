@@ -12,5 +12,9 @@ public:
   void exec(const Rinstruction &instr);
   void print();
   // void decode(const Rinstruction &instr);
+
+
+private:
+  void execRType (const Rinstruction &instr);
 };
 #endif // CPU_H
