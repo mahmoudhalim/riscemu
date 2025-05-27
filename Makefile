@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -g -O0
+CXXFLAGS = -std=c++17 -Wall -Wextra -Werror -g -O0
 
 TARGET = main
 
