@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
+
+class CPU;
 typedef enum class OpCode : uint8_t { Rtype = 0x33 } OpCode;
 typedef enum class Funct3 : uint8_t {
   addSub = 0x0,
@@ -15,9 +18,18 @@ typedef enum class Funct3 : uint8_t {
   andd = 0x7
 } Funct3;
 
-
-struct Rinstruction {
+class Instruction {
+public:
   uint32_t raw;
+  Instruction(uint32_t raw);
+
+  virtual void decode() = 0;
+  virtual std::string toString() const = 0;
+  virtual void execute(CPU &cpu) = 0;
+  virtual ~Instruction() = 0;
+};
+class RTypeInstruction : public Instruction {
+public:
   uint8_t funct7;
   uint8_t rs2;
   uint8_t rs1;
@@ -25,25 +37,13 @@ struct Rinstruction {
   uint8_t rd;
   OpCode opcode;
 
-  Rinstruction(uint32_t raw) : raw(raw) { decode(); }
-  void decode() {
-    funct7 = raw >> 25 & 0b1111111;
-    rs2 = (raw >> 20) & 0b11111;
-    rs1 = (raw >> 15) & 0b11111;
-    funct3 = static_cast<Funct3>((raw >> 12) & 0b111);
-    rd = (raw >> 7) & 0b11111;
-    opcode = static_cast<OpCode>(raw & 0b1111111);
-  }
-  void print() {
-    std::cout << std::hex << std::setw(8) << std::setfill('0') << raw
-              << std::endl;
-    std::cout << "opcode = " << static_cast<uint8_t>(opcode) << std::endl;
-    std::cout << "funct3 = " << static_cast<uint8_t>(funct3) << std::endl;
-    std::cout << "funct7 = " << static_cast<uint8_t>(funct7) << std::endl;
-    std::cout << "rs1 = " << rs1 << std::endl;
-    std::cout << "rs2 = " << rs2 << std::endl;
-    std::cout << "rd = " << rd << std::endl;
-    
-  }
+  RTypeInstruction(uint32_t raw);
+
+  void decode() override;
+
+  void execute(CPU &cpu) override;
+  std::string toString() const override; 
+
+  ~RTypeInstruction() {}
 };
 #endif // INSTRUCTIONS_H
