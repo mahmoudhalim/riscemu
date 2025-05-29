@@ -2,69 +2,35 @@
 #include "instructions.h"
 #include <cstdint>
 #include <iostream>
+#include <stdexcept>
 
-cpu::cpu() {
+CPU::CPU() {
   pc = 0;
   // for testing
   registers[6] = 4;
   registers[7] = 30;
 }
 
-cpu::~cpu() {}
+CPU::~CPU() {}
 
-void cpu::exec(const Rinstruction &instr) {
-  switch (instr.opcode) {
+Instruction *CPU::decode(uint32_t raw) {
+  OpCode opCode = static_cast<OpCode>(raw & 0b1111111);
+  switch (opCode) {
   case OpCode::Rtype:
-    execRType(instr);
+    return new RTypeInstruction(raw);
     break;
   default:
+    throw std::runtime_error("Not supported instruction");
     break;
   }
 }
 
-void cpu::execRType(const Rinstruction &instr) {
-  switch (instr.funct3) {
-  case Funct3::addSub:
-    if (instr.funct7 == 0) {
-      registers[instr.rd] = registers[instr.rs1] + registers[instr.rs2];
-    } else
-      registers[instr.rd] = registers[instr.rs1] - registers[instr.rs2];
-    break;
-  case Funct3::sll:
-    registers[instr.rd] = registers[instr.rs1]
-                          << (registers[instr.rs2] & 0b1111);
-    break;
-  case Funct3::slt:
-    registers[instr.rd] = static_cast<int32_t>(registers[instr.rs1]) <
-                          static_cast<int32_t>(registers[instr.rs2]);
-    break;
-  case Funct3::sltu:
-    registers[instr.rd] = registers[instr.rs1] < registers[instr.rs2];
-    break;
-  case Funct3::xorr:
-    registers[instr.rd] = registers[instr.rs1] ^ registers[instr.rs2];
-    break;
-  case Funct3::sr:
-    if (instr.funct7 == 0) {
-      registers[instr.rd] = registers[instr.rs1]
-                            >> (registers[instr.rs2] & 0b1111);
-    } else {
-      registers[instr.rd] = static_cast<int32_t>(registers[instr.rs1])
-                            >> (registers[instr.rs2] & 0b1111);
-    }
-    break;
-  case Funct3::orr:
-    registers[instr.rd] = registers[instr.rs1] | registers[instr.rs2];
-    break;
-  case Funct3::andd:
-    registers[instr.rd] = registers[instr.rs1] & registers[instr.rs2];
-    break;
-
-  default:
-    break;
-  }
+void CPU::execute(uint32_t raw) {
+  Instruction *instr = decode(raw);
+  instr->execute(*this);
 }
-void cpu::print() {
+
+void CPU::print() const {
   for (int i = 0; i < 32; i++) {
     std::cout << "X" << i << " = " << registers[i] << std::endl;
   }
