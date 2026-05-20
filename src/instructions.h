@@ -26,7 +26,7 @@ public:
   virtual void decode() = 0;
   virtual std::string toString() const = 0;
   virtual void execute(CPU &cpu) = 0;
-  virtual ~Instruction() = 0;
+  virtual ~Instruction();
 };
 class RTypeInstruction : public Instruction {
 public:
