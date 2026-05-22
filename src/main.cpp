@@ -1,11 +1,8 @@
 #include "cpu.h"
-#include <cstdint>
 
 int main() {
-  CPU c;
-  uint32_t IM[] = {0x007312b3};
-  c.execute(IM[0]);
-  // instr.print();
+  CPU c{};
+  c.run_all();
   c.print();
   return 0;
 }
