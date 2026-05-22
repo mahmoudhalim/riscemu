@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 project(riscemu CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -26,3 +26,16 @@ target_include_directories(riscv-core
 add_executable(riscemu src/main.cpp)
 
 target_link_libraries(riscemu PRIVATE riscv-core)
+
+include(CTest)
+enable_testing()
+
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(googletest)
+
+add_subdirectory(tests)
