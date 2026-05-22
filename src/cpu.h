@@ -1,16 +1,21 @@
-#ifndef CPU_H
-#define CPU_H
-#include "instructions.h"
-#include <cstdint>
+#pragma once
+#include "core/registers.h"
+#include <vector>
 class CPU {
 public:
-  uint32_t registers[32] = {0};
   uint32_t pc;
 
   CPU();
-  ~CPU();
-  Instruction *decode(uint32_t raw);
-  void execute(uint32_t raw_instruction);
+  void step();
+  void run_all();
   void print() const;
+
+private:
+  Registers regs_{};
+  std::vector<uint32_t> program = {
+      0x002081b3, // add x3, x1, x2
+      0x40218233, // sub x4, x3, x2
+      0x0020f2b3, // and x5, x1, x2
+      0x00239433  // sll x8, x7, x2 (requires slt result)
+  };
 };
-#endif // CPU_H
