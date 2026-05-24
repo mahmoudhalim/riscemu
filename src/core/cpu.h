@@ -1,5 +1,6 @@
 #pragma once
-#include "core/registers.h"
+#include "memory/memory.h"
+#include "registers.h"
 #include <vector>
 class CPU {
 public:
@@ -7,11 +8,12 @@ public:
 
   CPU();
   void step();
-  void run_all();
+  void run();
   void print() const;
 
 private:
   Registers regs_{};
+  Memory mem_;
   std::vector<uint32_t> program = {
       0x002081b3, // add x3, x1, x2
       0x40218233, // sub x4, x3, x2

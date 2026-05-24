@@ -1,8 +1,8 @@
-#include "cpu.h"
+#include "core/cpu.h"
 
 int main() {
   CPU c{};
-  c.run_all();
+  c.run();
   c.print();
   return 0;
 }
