@@ -10,7 +10,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 add_library(riscv-core STATIC
-    src/cpu.cpp
+    src/core/cpu.cpp
     src/core/decoder.cpp
     src/core/executor.cpp
     src/memory/memory.cpp
@@ -25,6 +25,11 @@ target_include_directories(riscv-core
 )
 
 add_executable(riscemu src/main.cpp)
+
+target_include_directories(riscemu
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 target_link_libraries(riscemu PRIVATE riscv-core)
 
