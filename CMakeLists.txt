@@ -13,6 +13,7 @@ add_library(riscv-core STATIC
     src/cpu.cpp
     src/core/decoder.cpp
     src/core/executor.cpp
+    src/memory/memory.cpp
 )
 
 target_include_directories(riscv-core
