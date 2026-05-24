@@ -21,3 +21,14 @@ TEST(RegistersTest, OutOfRangeWritesAreIgnored) {
 
   EXPECT_EQ(regs.read(33), 0u);
 }
+
+TEST(RegistersTest, NormalReadWriteRoundTrips) {
+  Registers regs;
+
+  EXPECT_EQ(regs.read(1), 0u);
+  regs.write(1, 123u);
+  regs.write(2, 456u);
+
+  EXPECT_EQ(regs.read(1), 123u);
+  EXPECT_EQ(regs.read(2), 456u);
+}
