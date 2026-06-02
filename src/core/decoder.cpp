@@ -1,10 +1,11 @@
 #include "decoder.h"
 #include "riscv/instruction.h"
+#include <cstdint>
+#include <iostream>
 
 DecodedInstruction Decoder::decode(uint32_t instruction) {
   DecodedInstruction ir;
   ir.raw = instruction;
-
   ir.opcode = instruction & 0x7f;         // bits [6:0]
   ir.rd = (instruction >> 7) & 0x1f;      // bits [11:7]
   ir.funct3 = (instruction >> 12) & 0x07; // bits [14:12]
@@ -13,7 +14,13 @@ DecodedInstruction Decoder::decode(uint32_t instruction) {
   ir.funct7 = (instruction >> 25) & 0x7f; // bits [31:25]
 
   ir.format = get_instruction_format(ir.opcode);
-  ir.type = get_instruction_type(ir.format, ir.funct3, ir.funct7);
+  if (ir.format == InstructionFormat::I_TYPE) {
+    ir.imm = (static_cast<int32_t>(instruction) >> 20);
+  } else if (ir.format == InstructionFormat::U_TYPE) {
+    // U-type immediate is the upper 20 bits, sign-extended, then shifted left 12.
+    ir.imm = static_cast<int32_t>(instruction & 0xFFFFF000u);
+  }
+  ir.type = get_instruction_type(ir.format, ir.opcode, ir.funct3, ir.funct7);
   return ir;
 }
 
@@ -45,7 +52,8 @@ InstructionFormat Decoder::get_instruction_format(uint8_t opcode) {
 }
 
 InstructionType Decoder::get_instruction_type(InstructionFormat format,
-                                              uint8_t funct3, uint8_t funct7) {
+                                              uint8_t opcode, uint8_t funct3,
+                                              uint8_t funct7) {
   // R-type instructions
   if (format == InstructionFormat::R_TYPE) {
     if (funct3 == 0b000) {
@@ -68,6 +76,31 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
       return InstructionType::OR;
     if (funct3 == 0b111)
       return InstructionType::AND;
+  } else if (format == InstructionFormat::I_TYPE) {
+    if (funct3 == 0b000)
+      return InstructionType::ADDI;
+    if (funct3 == 0b010)
+      return InstructionType::SLTI;
+    if (funct3 == 0b011)
+      return InstructionType::SLTIU;
+    if (funct3 == 0b100)
+      return InstructionType::XORI;
+    if (funct3 == 0b110)
+      return InstructionType::ORI;
+    if (funct3 == 0b111)
+      return InstructionType::ANDI;
+    if (funct3 == 0b001)
+      return InstructionType::SLLI;
+    if (funct3 == 0b101) {
+      return (funct7 == 0b0000000) ? InstructionType::SRLI
+                                   : InstructionType::SRAI;
+    }
+  } else if (format == InstructionFormat::U_TYPE) {
+    // Opcode 0b0110111 -> LUI, opcode 0b0010111 -> AUIPC.
+    if (opcode == 0b0110111)
+      return InstructionType::LUI;
+    if (opcode == 0b0010111)
+      return InstructionType::AUIPC;
   }
   return InstructionType::UNKNOWN;
 }
