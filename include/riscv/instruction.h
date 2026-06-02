@@ -22,7 +22,23 @@ enum class InstructionType {
   SRA,
   OR,
   AND,
-  UNKNOWN
+  UNKNOWN,
+
+  // I TYPE
+  ADDI,
+  SLTI,
+  SLTIU,
+  XORI,
+  ORI,
+  ANDI,
+  SLLI,
+  SRLI,
+  SRAI,
+
+  // U TYPE
+  LUI,
+  AUIPC,
+
 };
 
 struct DecodedInstruction {

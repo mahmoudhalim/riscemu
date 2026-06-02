@@ -127,9 +127,10 @@ TEST(ExecutorRTypeTest, AndsRegisters) {
   EXPECT_EQ(regs.read(12), 0b1000u);
 }
 
-TEST(ExecutorRTypeTest, ThrowsOnNonRType) {
+TEST(ExecutorRTypeTest, ThrowsOnUnsupportedFormat) {
   Registers regs;
-  auto ir = Decoder::decode(0x00000013); // addi x0, x0, 0
+  // sw x0, 0(x0) -> S_TYPE, which Executor::execute does not handle.
+  auto ir = Decoder::decode(0x00002023);
 
   EXPECT_THROW(Executor::execute(ir, regs), std::runtime_error);
 }

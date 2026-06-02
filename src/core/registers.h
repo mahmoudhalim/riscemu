@@ -13,6 +13,8 @@ public:
     registers_[reg] = value;
   }
 
+  uint32_t pc = 0;
+
 private:
   uint32_t registers_[32] = {};
 };

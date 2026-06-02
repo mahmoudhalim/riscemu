@@ -9,4 +9,6 @@ public:
 
 private:
   static void execute_r_type(DecodedInstruction ir, Registers &registers);
+  static void execute_i_type(DecodedInstruction ir, Registers &registers);
+  static void execute_u_type(DecodedInstruction ir, Registers &registers);
 };
