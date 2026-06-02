@@ -4,6 +4,7 @@
 BUILD_DIR ?= build
 RELEASE_BUILD_DIR ?= build-release
 BUILD_TYPE ?= Debug
+PROGRAM ?= examples/rtype_test.hex
 
 all: build
 
@@ -23,7 +24,7 @@ test: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
 
 run: build
-	./$(BUILD_DIR)/riscemu
+	./$(BUILD_DIR)/riscemu $(PROGRAM)
 
 clean:
 	rm -rf $(BUILD_DIR)

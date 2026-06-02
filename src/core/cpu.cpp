@@ -3,19 +3,17 @@
 #include "core/executor.h"
 #include <iostream>
 
-CPU::CPU() : mem_(4 * 1024 * 1024) {
+CPU::CPU(std::filesystem::path path) : mem_(4 * 1024 * 1024) {
   pc = 0;
   // for testing
   regs_.write(1, 10); // x1 = 10
   regs_.write(2, 3);  // x2 = 3
 
-  for (size_t i = 0; i < program.size(); ++i) {
-    mem_.write_word(static_cast<uint32_t>(i * 4), program[i]);
-  }
+  program_size_bytes_ = mem_.load_file(path);
 }
 
 void CPU::run() {
-  for (pc = 0; pc < program.size() * 4; pc += 4) {
+  for (pc = 0; pc < program_size_bytes_; pc += 4) {
     auto ir = Decoder::decode(mem_.read_word(pc));
     Executor::execute(ir, regs_);
     std::cout << "Executed " << (int)ir.type << " | x" << (int)ir.rd << " = "
