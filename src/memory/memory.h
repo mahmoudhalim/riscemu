@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <vector>
 
 class Memory {
@@ -15,6 +16,8 @@ public:
   void write_byte(uint32_t address, uint8_t value);
   void write_halfword(uint32_t address, uint16_t value);
   void write_word(uint32_t address, uint32_t value);
+
+  size_t load_file(const std::filesystem::path &path);
 
   size_t size_bytes() const { return bytes_.size(); }
 

@@ -1,6 +1,7 @@
 add_executable(unit_tests
     decoder_test.cpp
     executor_rtype_test.cpp
+    load_file_test.cpp
     memory_test.cpp
     registers_test.cpp
 )
