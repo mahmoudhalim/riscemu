@@ -7,15 +7,18 @@
 
 namespace {
 constexpr uint32_t encode_i(uint8_t rd, uint8_t rs1, uint8_t funct3,
-                            int32_t imm, uint8_t funct7 = 0) {
-  // I-type encoding: opcode=0x13 (OP-IMM), imm[11:0] in bits[31:20].
-  return static_cast<uint32_t>(0x13) |
+                            int32_t imm, uint8_t funct7 = 0,
+                            uint8_t opcode = 0x13) {
+  // I-type encoding: opcode in bits[6:0] (default 0x13 = OP-IMM), imm[11:0]
+  // in bits[31:20]. funct7 in bits[31:25] is only used for shift variants.
+  return static_cast<uint32_t>(opcode) |
          (static_cast<uint32_t>(rd) << 7) |
          (static_cast<uint32_t>(funct3) << 12) |
          (static_cast<uint32_t>(rs1) << 15) |
-         (static_cast<uint32_t>(imm) & 0xFFF) << 20 |
+         ((static_cast<uint32_t>(imm) & 0xFFF) << 20) |
          (static_cast<uint32_t>(funct7) << 25);
 }
+constexpr uint8_t JALR_OPCODE = 0x67;
 } // namespace
 
 TEST(ExecutorITypeTest, AddiAddsImmediate) {
@@ -86,4 +89,62 @@ TEST(ExecutorITypeTest, SlliShamtComesFromImmediateLow5Bits) {
   auto ir = Decoder::decode(encode_i(3, 1, 0b001, 0x804, 0));
   Executor::execute(ir, regs);
   EXPECT_EQ(regs.read(3), 16u);
+}
+
+TEST(ExecutorITypeTest, NonJumpITypeAdvancesPcByFour) {
+  // Every non-jump I-type must advance regs.pc by 4.
+  Registers regs;
+  regs.pc = 0x100;
+  regs.write(1, 1u);
+  auto ir = Decoder::decode(encode_i(3, 1, 0b000, 5));
+  Executor::execute(ir, regs);
+  EXPECT_EQ(regs.pc, 0x104u);
+}
+
+TEST(ExecutorITypeTest, JalrWritesLinkAndJumpsToTarget) {
+  // JALR x1, x2, 16  =>  x1 = pc + 4, pc = (x2 + 16) & ~1
+  Registers regs;
+  regs.pc = 0x80;
+  regs.write(2, 0x200);
+  auto ir = Decoder::decode(encode_i(1, 2, 0b000, 16, 0, JALR_OPCODE));
+  Executor::execute(ir, regs);
+
+  EXPECT_EQ(regs.read(1), 0x84u); // link
+  EXPECT_EQ(regs.pc, 0x210u);     // (0x200 + 16) & ~1
+}
+
+TEST(ExecutorITypeTest, JalrClearsLsbOfTarget) {
+  // (rs1 + imm) is odd → LSB must be cleared.
+  Registers regs;
+  regs.pc = 0x40;
+  regs.write(2, 0x100);
+  auto ir =
+      Decoder::decode(encode_i(1, 2, 0b000, 7, 0, JALR_OPCODE)); // 0x100 + 7 = 0x107
+  Executor::execute(ir, regs);
+
+  EXPECT_EQ(regs.pc, 0x106u);
+}
+
+TEST(ExecutorITypeTest, JalrWithRdZeroDoesNotWriteLink) {
+  // JALR x0, ... → x0 stays 0; PC still updates.
+  Registers regs;
+  regs.pc = 0x20;
+  regs.write(2, 0x300);
+  auto ir = Decoder::decode(encode_i(0, 2, 0b000, 0, 0, JALR_OPCODE));
+  Executor::execute(ir, regs);
+
+  EXPECT_EQ(regs.read(0), 0u);
+  EXPECT_EQ(regs.pc, 0x300u);
+}
+
+TEST(ExecutorITypeTest, JalrRdEqualsRs1WritesLinkAfterReadingBase) {
+  // JALR x2, x2, 8  →  link = pc + 4, then target = (old x2) + 8
+  Registers regs;
+  regs.pc = 0x10;
+  regs.write(2, 0x400);
+  auto ir = Decoder::decode(encode_i(2, 2, 0b000, 8, 0, JALR_OPCODE));
+  Executor::execute(ir, regs);
+
+  EXPECT_EQ(regs.read(2), 0x14u); // link
+  EXPECT_EQ(regs.pc, 0x408u);     // 0x400 + 8
 }
