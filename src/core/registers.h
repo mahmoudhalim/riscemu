@@ -13,6 +13,7 @@ public:
     registers_[reg] = value;
   }
 
+  // Program counter. the executor is the only writer.
   uint32_t pc = 0;
 
 private:

@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 
-void Executor::execute(DecodedInstruction ir, Registers &registers) {
+void Executor::execute(const DecodedInstruction &ir, Registers &registers) {
   switch (ir.format) {
   case InstructionFormat::R_TYPE:
     return Executor::execute_r_type(ir, registers);
@@ -12,12 +12,15 @@ void Executor::execute(DecodedInstruction ir, Registers &registers) {
     return Executor::execute_i_type(ir, registers);
   case InstructionFormat::U_TYPE:
     return Executor::execute_u_type(ir, registers);
+  case InstructionFormat::J_TYPE:
+    return Executor::execute_jump(ir, registers);
   default:
     throw std::runtime_error("How Did You do this ?");
   }
 }
 
-void Executor::execute_r_type(DecodedInstruction ir, Registers &registers) {
+void Executor::execute_r_type(const DecodedInstruction& ir, Registers &registers) {
+  registers.pc += 4;
   uint8_t rd = ir.rd;
 
   uint32_t rs1 = registers.read(ir.rs1);
@@ -71,10 +74,23 @@ void Executor::execute_r_type(DecodedInstruction ir, Registers &registers) {
     throw std::runtime_error("Unknown R type Instruction");
   }
 }
-void Executor::execute_i_type(DecodedInstruction ir, Registers &registers) {
+void Executor::execute_i_type(const DecodedInstruction& ir, Registers &registers) {
   uint8_t rd = ir.rd;
   uint32_t rs1 = registers.read(ir.rs1);
   int32_t imm = ir.imm;
+
+  switch (ir.type) {
+  case InstructionType::JALR: {
+    uint32_t link = registers.pc + 4;
+    uint32_t target = (rs1 + imm) & ~1u;
+    registers.write(rd, link);
+    registers.pc = target;
+    break;
+  }
+  default:
+    registers.pc += 4;
+    break;
+  }
 
   switch (ir.type) {
   case InstructionType::ADDI:
@@ -105,27 +121,40 @@ void Executor::execute_i_type(DecodedInstruction ir, Registers &registers) {
   case InstructionType::XORI:
     registers.write(rd, rs1 ^ imm);
     break;
+  case InstructionType::JALR:
+    // PC and link already written above.
+    break;
   [[unlikely]]
   default:
     throw std::runtime_error("Unknown I type Instruction");
   }
 }
 
-void Executor::execute_u_type(DecodedInstruction ir, Registers &registers) {
+void Executor::execute_u_type(const DecodedInstruction& ir, Registers &registers) {
   uint8_t rd = ir.rd;
   int32_t imm = ir.imm;
+  uint32_t pc_before = registers.pc;
+  registers.pc += 4;
 
   switch (ir.type) {
   case InstructionType::LUI:
-    // Load upper immediate: rd = imm (which already has the upper-20 in [31:12]).
+    // Load upper immediate: rd = imm (which already has the upper-20 in
+    // [31:12]).
     registers.write(rd, static_cast<uint32_t>(imm));
     break;
   case InstructionType::AUIPC:
-    // rd = pc + imm (AUIPC: add upper immediate to PC).
-    registers.write(rd, static_cast<uint32_t>(imm + registers.pc));
+    // rd = pc + imm (AUIPC: add upper immediate to PC). PC is the address
+    // of the AUIPC instruction itself, so we use the saved pre-advance
+    // value.
+    registers.write(rd, static_cast<uint32_t>(imm + pc_before));
     break;
   [[unlikely]]
   default:
     throw std::runtime_error("Unknown U type Instruction");
   }
+}
+
+void Executor::execute_jump(const DecodedInstruction& ir, Registers &registers) {
+  registers.write(ir.rd, registers.pc + 4);
+  registers.pc = registers.pc + ir.imm;
 }
