@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+
 Memory::Memory(size_t size_bytes) { bytes_.resize(size_bytes); }
 
 uint8_t Memory::read_byte(uint32_t address) const {
@@ -54,28 +55,22 @@ void Memory::write_word(uint32_t address, uint32_t value) {
 }
 
 size_t Memory::load_file(const std::filesystem::path &path) {
-  std::ifstream file(path);
+  std::ifstream file(path, std::ios::binary | std::ios::ate);
   if (!file.is_open()) {
-    std::cerr << "[ERROR] Could not open hex file: " << path << '\n';
+    std::cerr << "[ERROR] Could not open binary file: " << path << '\n';
     exit(1);
   }
-  std::string hex;
-  size_t addr = 0;
-  while (file >> hex) {
-    if (addr + 3 >= size_bytes()) {
-      std::cerr << "[ERROR] Hex file exceeds memory size at address 0x"
-                << std::hex << addr << '\n';
-      return addr;
-    }
-    try {
-      this->write_word(addr, std::stoul(hex, nullptr, 16));
-      addr += 4;
-    } catch (const std::exception &e) {
-      std::cerr << "[ERROR] Malformed hex string '" << hex << "' at address 0x"
-                << std::hex << addr << '\n';
-      return addr;
-    }
+
+  size_t file_size = file.tellg();
+  if (file_size > size_bytes()) {
+    std::cerr << "[ERROR] Binary file size (" << file_size
+              << " bytes) exceeds memory size (" << size_bytes()
+              << " bytes)\n";
+    exit(1);
   }
 
-  return addr;
+  file.seekg(0, std::ios::beg);
+  file.read(reinterpret_cast<char *>(bytes_.data()),
+            static_cast<std::streamsize>(file_size));
+  return file_size;
 }

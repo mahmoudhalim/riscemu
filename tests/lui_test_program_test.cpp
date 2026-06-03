@@ -7,40 +7,47 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include <string>
+#include <vector>
 
 namespace {
-std::filesystem::path write_temp_hex(const std::string &contents) {
+std::filesystem::path write_temp_binary(const std::vector<uint8_t> &data) {
   auto path = std::filesystem::temp_directory_path() /
-              ("riscemu_i_u_type_" + std::to_string(std::rand()) + ".hex");
-  std::ofstream f(path);
-  f << contents;
+              ("riscemu_i_u_type_" + std::to_string(std::rand()) + ".bin");
+  std::ofstream f(path, std::ios::binary);
+  f.write(reinterpret_cast<const char *>(data.data()), data.size());
   f.close();
   return path;
 }
 } // namespace
 
-// Loads the program from a hex string, decodes+executes every word, and
+// Loads the program from a binary file, decodes+executes every word, and
 // asserts the final register state. This is the end-to-end "lui_test" covering
 // every I-type op (ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI) and
 // the U-type op LUI.
 TEST(LuiTestProgram, RunsAllIAndUTypeInstructions) {
-  const std::string hex = R"(
-00a00093
-00300113
-0050c193
-0050e213
-0050f293
-0140a313
-0140b393
-00209413
-0010d493
-12345537
-00001637
-800006b7
-4016d713
-)";
+  // Instructions encoded as little-endian 32-bit words:
+  // 00a00093  addi x1, x0, 10
+  // 00300113  addi x2, x0, 3
+  // 0050c193  xori x3, x1, 5
+  // 0050e213  ori  x4, x1, 5
+  // 0050f293  andi x5, x1, 5
+  // 0140a313  slti x6, x1, 20
+  // 0140b393  sltiu x7, x1, 20
+  // 00209413  slli x8, x1, 2
+  // 0010d493  srli x9, x1, 1
+  // 12345537  lui  x10, 0x12345
+  // 00001637  lui  x12, 0x00001
+  // 800006b7  lui  x13, 0x80000
+  // 4016d713  srai x14, x13, 1
+  std::vector<uint8_t> bin = {
+      0x93, 0x00, 0xa0, 0x00, 0x13, 0x01, 0x30, 0x00, 0x93, 0xc1, 0x50, 0x00,
+      0x13, 0xe2, 0x50, 0x00, 0x93, 0xf2, 0x50, 0x00, 0x13, 0xa3, 0x40, 0x01,
+      0x93, 0xb3, 0x40, 0x01, 0x13, 0x94, 0x20, 0x00, 0x93, 0xd4, 0x10, 0x00,
+      0x37, 0x55, 0x34, 0x12, 0x37, 0x16, 0x00, 0x00, 0xb7, 0x06, 0x00, 0x80,
+      0x13, 0xd7, 0x16, 0x40,
+  };
 
-  auto path = write_temp_hex(hex);
+  auto path = write_temp_binary(bin);
   Memory mem(64);
   size_t loaded = mem.load_file(path);
   std::filesystem::remove(path);
