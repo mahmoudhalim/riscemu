@@ -39,6 +39,9 @@ enum class InstructionType {
   LUI,
   AUIPC,
 
+  // J TYPE
+  JAL,
+  JALR,
 };
 
 struct DecodedInstruction {

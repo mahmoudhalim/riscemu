@@ -1,7 +1,6 @@
 #include "decoder.h"
 #include "riscv/instruction.h"
 #include <cstdint>
-#include <iostream>
 
 DecodedInstruction Decoder::decode(uint32_t instruction) {
   DecodedInstruction ir;
@@ -17,8 +16,18 @@ DecodedInstruction Decoder::decode(uint32_t instruction) {
   if (ir.format == InstructionFormat::I_TYPE) {
     ir.imm = (static_cast<int32_t>(instruction) >> 20);
   } else if (ir.format == InstructionFormat::U_TYPE) {
-    // U-type immediate is the upper 20 bits, sign-extended, then shifted left 12.
     ir.imm = static_cast<int32_t>(instruction & 0xFFFFF000u);
+  } else if (ir.format == InstructionFormat::J_TYPE) {
+    uint32_t imm_sign = instruction >> 31 & 0x01;
+    uint32_t imm_19_12 = instruction >> 12 & 0xFF;
+    uint32_t imm_11 = instruction >> 20 & 0x01;
+    uint32_t imm_10_1 = instruction >> 21 & 0x3FF;
+    uint32_t imm =
+        imm_sign << 20 | imm_19_12 << 12 | imm_11 << 11 | imm_10_1 << 1;
+    if (imm & (1 << 20)) {
+      imm |= 0xFFF00000;
+    }
+    ir.imm = imm;
   }
   ir.type = get_instruction_type(ir.format, ir.opcode, ir.funct3, ir.funct7);
   return ir;
@@ -41,7 +50,6 @@ InstructionFormat Decoder::get_instruction_format(uint8_t opcode) {
   case 0b1100111:
     return InstructionFormat::I_TYPE;
   case 0b0110111:
-    return InstructionFormat::U_TYPE;
   case 0b0010111:
     return InstructionFormat::U_TYPE;
   case 0b1110011:
@@ -77,6 +85,9 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
     if (funct3 == 0b111)
       return InstructionType::AND;
   } else if (format == InstructionFormat::I_TYPE) {
+    if (opcode == 0b1100111) {
+      return InstructionType::JALR;
+    }
     if (funct3 == 0b000)
       return InstructionType::ADDI;
     if (funct3 == 0b010)
@@ -96,11 +107,12 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
                                    : InstructionType::SRAI;
     }
   } else if (format == InstructionFormat::U_TYPE) {
-    // Opcode 0b0110111 -> LUI, opcode 0b0010111 -> AUIPC.
     if (opcode == 0b0110111)
       return InstructionType::LUI;
     if (opcode == 0b0010111)
       return InstructionType::AUIPC;
+  } else if (format == InstructionFormat::J_TYPE) {
+    return InstructionType::JAL;
   }
   return InstructionType::UNKNOWN;
 }
