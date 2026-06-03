@@ -8,12 +8,17 @@
 
 class CPU {
 public:
-  uint32_t pc;
-
   CPU(std::filesystem::path path);
   void step();
   void run();
   void print() const;
+
+#ifdef RISCEMU_TESTING
+  // Test-only accessors. Define RISCEMU_TESTING in the test target's
+  // compile definitions. No production source file sees these.
+  Registers &regs() { return regs_; }
+  const Registers &regs() const { return regs_; }
+#endif
 
 private:
   Registers regs_{};
