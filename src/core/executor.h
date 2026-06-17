@@ -15,4 +15,7 @@ private:
   static void execute_u_type(const DecodedInstruction &ir,
                              Registers &registers);
   static void execute_jump(const DecodedInstruction &ir, Registers &registers);
+
+  static void execute_b_type(const DecodedInstruction &ir,
+                             Registers &registers);
 };

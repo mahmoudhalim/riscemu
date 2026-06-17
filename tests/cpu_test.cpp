@@ -135,3 +135,30 @@ TEST(CpuRunTest, JalrExitsProgramByJumpingOutOfBounds) {
   // PC was set to 0x10000 by the JALR, exiting the run loop.
   EXPECT_GE(cpu.regs().pc, 12u);
 }
+
+TEST(CpuRunTest, BneLoopCalculatesSum) {
+  // Simple countdown loop that sums values from 3 down to 1.
+  //   addi x1, x0, 3    ; n = 3
+  //   addi x2, x0, 0    ; sum = 0
+  // loop:
+  //   add  x2, x2, x1   ; sum += n
+  //   addi x1, x1, -1   ; n--
+  //   bne  x1, x0, loop ; if n != 0, goto loop (-8 bytes)
+  //   jal  x0, +8       ; jump out of program to end test
+  std::vector<uint8_t> bin = {
+      0x93, 0x00, 0x30, 0x00, // addi x1, x0, 3 (0x00300093)
+      0x13, 0x01, 0x00, 0x00, // addi x2, x0, 0 (0x00000113)
+      0x33, 0x01, 0x11, 0x00, // loop: add x2, x2, x1 (rd=2, rs1=2, rs2=1) -> 0x00110133
+      0x93, 0x80, 0xF0, 0xFF, // addi x1, x1, -1 (rd=1, rs1=1, imm=-1) -> 0xFFF08093
+      0xE3, 0x9C, 0x00, 0xFE, // bne x1, x0, loop (-8) -> 0xFE009CE3
+      0x6F, 0x00, 0x80, 0x00, // jal x0, +8
+  };
+  auto path = write_temp_binary(bin);
+  CPU cpu(path);
+  std::filesystem::remove(path);
+
+  cpu.run();
+
+  EXPECT_EQ(cpu.regs().read(2), 6u); // 3+2+1 = 6
+  EXPECT_EQ(cpu.regs().read(1), 0u);
+}

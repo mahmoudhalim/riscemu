@@ -28,6 +28,17 @@ DecodedInstruction Decoder::decode(uint32_t instruction) {
       imm |= 0xFFF00000;
     }
     ir.imm = imm;
+  } else if (ir.format == InstructionFormat::B_TYPE) {
+    uint32_t imm_sign = instruction >> 31 & 0x01;
+    uint32_t imm11 = instruction >> 7 & 0x01;
+    uint32_t imm10_5 = instruction >> 25 & 0x3F;
+    uint32_t imm4_1 = instruction >> 8 & 0x0F;
+
+    uint32_t imm = imm_sign << 12 | imm11 << 11 | imm10_5 << 5 | imm4_1 << 1;
+    if (imm & (1 << 12)) {
+      imm |= 0xFFFFE000;
+    }
+    ir.imm = imm;
   }
   ir.type = get_instruction_type(ir.format, ir.opcode, ir.funct3, ir.funct7);
   return ir;
@@ -113,6 +124,19 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
       return InstructionType::AUIPC;
   } else if (format == InstructionFormat::J_TYPE) {
     return InstructionType::JAL;
+  } else if (format == InstructionFormat::B_TYPE) {
+    if (funct3 == 0b000)
+      return InstructionType::BEQ;
+    if (funct3 == 0b001)
+      return InstructionType::BNE;
+    if (funct3 == 0b100)
+      return InstructionType::BLT;
+    if (funct3 == 0b101)
+      return InstructionType::BGE;
+    if (funct3 == 0b110)
+      return InstructionType::BLTU;
+    if (funct3 == 0b111)
+      return InstructionType::BGEU;
   }
   return InstructionType::UNKNOWN;
 }

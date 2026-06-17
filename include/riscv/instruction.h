@@ -42,6 +42,14 @@ enum class InstructionType {
   // J TYPE
   JAL,
   JALR,
+
+  // B TYPE
+  BEQ,
+  BNE,
+  BLT,
+  BLTU,
+  BGE,
+  BGEU,
 };
 
 struct DecodedInstruction {

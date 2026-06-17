@@ -5,6 +5,7 @@ add_executable(unit_tests
     executor_jtype_test.cpp
     executor_rtype_test.cpp
     executor_utype_test.cpp
+    executor_btype_test.cpp
     load_file_test.cpp
     lui_test_program_test.cpp
     memory_test.cpp

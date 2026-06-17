@@ -14,12 +14,15 @@ void Executor::execute(const DecodedInstruction &ir, Registers &registers) {
     return Executor::execute_u_type(ir, registers);
   case InstructionFormat::J_TYPE:
     return Executor::execute_jump(ir, registers);
+  case InstructionFormat::B_TYPE:
+    return Executor::execute_b_type(ir, registers);
   default:
     throw std::runtime_error("How Did You do this ?");
   }
 }
 
-void Executor::execute_r_type(const DecodedInstruction& ir, Registers &registers) {
+void Executor::execute_r_type(const DecodedInstruction &ir,
+                              Registers &registers) {
   registers.pc += 4;
   uint8_t rd = ir.rd;
 
@@ -74,7 +77,8 @@ void Executor::execute_r_type(const DecodedInstruction& ir, Registers &registers
     throw std::runtime_error("Unknown R type Instruction");
   }
 }
-void Executor::execute_i_type(const DecodedInstruction& ir, Registers &registers) {
+void Executor::execute_i_type(const DecodedInstruction &ir,
+                              Registers &registers) {
   uint8_t rd = ir.rd;
   uint32_t rs1 = registers.read(ir.rs1);
   int32_t imm = ir.imm;
@@ -130,7 +134,8 @@ void Executor::execute_i_type(const DecodedInstruction& ir, Registers &registers
   }
 }
 
-void Executor::execute_u_type(const DecodedInstruction& ir, Registers &registers) {
+void Executor::execute_u_type(const DecodedInstruction &ir,
+                              Registers &registers) {
   uint8_t rd = ir.rd;
   int32_t imm = ir.imm;
   uint32_t pc_before = registers.pc;
@@ -154,7 +159,44 @@ void Executor::execute_u_type(const DecodedInstruction& ir, Registers &registers
   }
 }
 
-void Executor::execute_jump(const DecodedInstruction& ir, Registers &registers) {
+void Executor::execute_jump(const DecodedInstruction &ir,
+                            Registers &registers) {
   registers.write(ir.rd, registers.pc + 4);
   registers.pc = registers.pc + ir.imm;
+}
+
+void Executor::execute_b_type(const DecodedInstruction &ir,
+                              Registers &registers) {
+  bool taken = false;
+  switch (ir.type) {
+  case InstructionType::BEQ:
+    taken = (registers.read(ir.rs1) == registers.read(ir.rs2));
+    break;
+  case InstructionType::BNE:
+    taken = (registers.read(ir.rs1) != registers.read(ir.rs2));
+    break;
+  case InstructionType::BLT:
+    taken =
+        ((int32_t)registers.read(ir.rs1) < (int32_t)registers.read(ir.rs2));
+    break;
+  case InstructionType::BGE:
+    taken =
+        ((int32_t)registers.read(ir.rs1) >= (int32_t)registers.read(ir.rs2));
+    break;
+  case InstructionType::BLTU:
+    taken = (registers.read(ir.rs1) < registers.read(ir.rs2));
+    break;
+  case InstructionType::BGEU:
+    taken = (registers.read(ir.rs1) >= registers.read(ir.rs2));
+    break;
+  [[unlikely]]
+  default:
+    throw std::runtime_error("Unknown B type Instruction");
+  }
+
+  if (taken) {
+    registers.pc += ir.imm;
+  } else {
+    registers.pc += 4;
+  }
 }
