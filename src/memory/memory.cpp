@@ -54,7 +54,7 @@ void Memory::write_word(uint32_t address, uint32_t value) {
   bytes_[address + 3] = static_cast<uint8_t>((value >> 24) & 0xFF);
 }
 
-size_t Memory::load_file(const std::filesystem::path &path) {
+size_t Memory::load_file(const std::filesystem::path& path) {
   std::ifstream file(path, std::ios::binary | std::ios::ate);
   if (!file.is_open()) {
     std::cerr << "[ERROR] Could not open binary file: " << path << '\n';
@@ -64,13 +64,12 @@ size_t Memory::load_file(const std::filesystem::path &path) {
   size_t file_size = file.tellg();
   if (file_size > size_bytes()) {
     std::cerr << "[ERROR] Binary file size (" << file_size
-              << " bytes) exceeds memory size (" << size_bytes()
-              << " bytes)\n";
+              << " bytes) exceeds memory size (" << size_bytes() << " bytes)\n";
     exit(1);
   }
 
   file.seekg(0, std::ios::beg);
-  file.read(reinterpret_cast<char *>(bytes_.data()),
+  file.read(reinterpret_cast<char*>(bytes_.data()),
             static_cast<std::streamsize>(file_size));
   return file_size;
 }

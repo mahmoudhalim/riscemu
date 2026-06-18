@@ -16,8 +16,8 @@ public:
 #ifdef RISCEMU_TESTING
   // Test-only accessors. Define RISCEMU_TESTING in the test target's
   // compile definitions. No production source file sees these.
-  Registers &regs() { return regs_; }
-  const Registers &regs() const { return regs_; }
+  Registers& regs() { return regs_; }
+  const Registers& regs() const { return regs_; }
 #endif
 
 private:

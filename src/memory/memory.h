@@ -17,7 +17,7 @@ public:
   void write_halfword(uint32_t address, uint16_t value);
   void write_word(uint32_t address, uint32_t value);
 
-  size_t load_file(const std::filesystem::path &path);
+  size_t load_file(const std::filesystem::path& path);
 
   size_t size_bytes() const { return bytes_.size(); }
 
