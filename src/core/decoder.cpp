@@ -39,6 +39,14 @@ DecodedInstruction Decoder::decode(uint32_t instruction) {
       imm |= 0xFFFFE000;
     }
     ir.imm = imm;
+  } else if (ir.format == InstructionFormat::S_TYPE) {
+    uint32_t imm11_5 = instruction >> 25 & 0x7F;
+    uint32_t imm4_0 = instruction >> 7 & 0x1F;
+
+    uint32_t raw_imm = imm11_5 << 5 | imm4_0;
+    int32_t imm = (raw_imm & 0x800) ? static_cast<int32_t>(raw_imm | 0xFFFFF000)
+                                    : static_cast<int32_t>(raw_imm);
+    ir.imm = imm;
   }
   ir.type = get_instruction_type(ir.format, ir.opcode, ir.funct3, ir.funct7);
   return ir;
@@ -48,9 +56,10 @@ InstructionFormat Decoder::get_instruction_format(uint8_t opcode) {
   switch (opcode) {
   case 0b0110011:
     return InstructionFormat::R_TYPE;
-  case 0b0010011:
-    return InstructionFormat::I_TYPE;
-  case 0b0000011:
+  case 0b0010011: // OP-IMM
+  case 0b0000011: // LOAD
+  case 0b1100111: // JALR
+  case 0b1110011: // SYSTEM
     return InstructionFormat::I_TYPE;
   case 0b0100011:
     return InstructionFormat::S_TYPE;
@@ -58,13 +67,9 @@ InstructionFormat Decoder::get_instruction_format(uint8_t opcode) {
     return InstructionFormat::B_TYPE;
   case 0b1101111:
     return InstructionFormat::J_TYPE;
-  case 0b1100111:
-    return InstructionFormat::I_TYPE;
-  case 0b0110111:
-  case 0b0010111:
+  case 0b0110111: // LUI
+  case 0b0010111: // AUIPC
     return InstructionFormat::U_TYPE;
-  case 0b1110011:
-    return InstructionFormat::I_TYPE;
   default:
     return InstructionFormat::UNKNOWN;
   }
@@ -99,23 +104,37 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
     if (opcode == 0b1100111) {
       return InstructionType::JALR;
     }
-    if (funct3 == 0b000)
-      return InstructionType::ADDI;
-    if (funct3 == 0b010)
-      return InstructionType::SLTI;
-    if (funct3 == 0b011)
-      return InstructionType::SLTIU;
-    if (funct3 == 0b100)
-      return InstructionType::XORI;
-    if (funct3 == 0b110)
-      return InstructionType::ORI;
-    if (funct3 == 0b111)
-      return InstructionType::ANDI;
-    if (funct3 == 0b001)
-      return InstructionType::SLLI;
-    if (funct3 == 0b101) {
-      return (funct7 == 0b0000000) ? InstructionType::SRLI
-                                   : InstructionType::SRAI;
+    if (opcode == 0b0010011) {
+      if (funct3 == 0b000)
+        return InstructionType::ADDI;
+      if (funct3 == 0b010)
+        return InstructionType::SLTI;
+      if (funct3 == 0b011)
+        return InstructionType::SLTIU;
+      if (funct3 == 0b100)
+        return InstructionType::XORI;
+      if (funct3 == 0b110)
+        return InstructionType::ORI;
+      if (funct3 == 0b111)
+        return InstructionType::ANDI;
+      if (funct3 == 0b001)
+        return InstructionType::SLLI;
+      if (funct3 == 0b101) {
+        return (funct7 == 0b0000000) ? InstructionType::SRLI
+                                     : InstructionType::SRAI;
+      }
+    }
+    if (opcode == 0b0000011) {
+      if (funct3 == 0b000)
+        return InstructionType::LB;
+      if (funct3 == 0b001)
+        return InstructionType::LH;
+      if (funct3 == 0b010)
+        return InstructionType::LW;
+      if (funct3 == 0b100)
+        return InstructionType::LBU;
+      if (funct3 == 0b101)
+        return InstructionType::LHU;
     }
   } else if (format == InstructionFormat::U_TYPE) {
     if (opcode == 0b0110111)
@@ -137,6 +156,13 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
       return InstructionType::BLTU;
     if (funct3 == 0b111)
       return InstructionType::BGEU;
+  } else if (format == InstructionFormat::S_TYPE) {
+    if (funct3 == 0b000)
+      return InstructionType::SB;
+    if (funct3 == 0b001)
+      return InstructionType::SH;
+    if (funct3 == 0b010)
+      return InstructionType::SW;
   }
   return InstructionType::UNKNOWN;
 }

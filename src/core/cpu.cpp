@@ -12,7 +12,7 @@ void CPU::step() {
   uint32_t cur_pc = regs_.pc;
   auto ir = Decoder::decode(mem_.read_word(cur_pc));
   std::cout << std::bitset<32>(ir.raw) << '\n';
-  Executor::execute(ir, regs_);
+  Executor::execute(ir, regs_, mem_);
   std::cout << "Executed " << (int)ir.type << " | x" << (int)ir.rd << " = "
             << regs_.read(ir.rd) << std::endl;
 }

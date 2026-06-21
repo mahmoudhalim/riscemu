@@ -4,18 +4,21 @@
 #include <cstdint>
 #include <stdexcept>
 
-void Executor::execute(const DecodedInstruction& ir, Registers& registers) {
+void Executor::execute(const DecodedInstruction& ir, Registers& registers,
+                       Memory& memory) {
   switch (ir.format) {
   case InstructionFormat::R_TYPE:
     return Executor::execute_r_type(ir, registers);
   case InstructionFormat::I_TYPE:
-    return Executor::execute_i_type(ir, registers);
+    return Executor::execute_i_type(ir, registers, memory);
   case InstructionFormat::U_TYPE:
     return Executor::execute_u_type(ir, registers);
   case InstructionFormat::J_TYPE:
     return Executor::execute_jump(ir, registers);
   case InstructionFormat::B_TYPE:
     return Executor::execute_b_type(ir, registers);
+  case InstructionFormat::S_TYPE:
+    return Executor::execute_s_type(ir, registers, memory);
   default:
     throw std::runtime_error("How Did You do this ?");
   }
@@ -78,7 +81,7 @@ void Executor::execute_r_type(const DecodedInstruction& ir,
   }
 }
 void Executor::execute_i_type(const DecodedInstruction& ir,
-                              Registers& registers) {
+                              Registers& registers, const Memory& memory) {
   uint8_t rd = ir.rd;
   uint32_t rs1 = registers.read(ir.rs1);
   int32_t imm = ir.imm;
@@ -128,6 +131,22 @@ void Executor::execute_i_type(const DecodedInstruction& ir,
   case InstructionType::JALR:
     // PC and link already written above.
     break;
+  case InstructionType::LW:
+    registers.write(rd, memory.read_word(rs1 + imm));
+    break;
+  case InstructionType::LB:
+    registers.write(rd, static_cast<int32_t>(memory.read_byte(rs1 + imm)));
+    break;
+  case InstructionType::LBU:
+    registers.write(rd, memory.read_byte(rs1 + imm));
+    break;
+  case InstructionType::LH:
+    registers.write(rd, static_cast<int32_t>(memory.read_halfword(rs1 + imm)));
+    break;
+  case InstructionType::LHU:
+    registers.write(rd, memory.read_halfword(rs1 + imm));
+    break;
+
   [[unlikely]]
   default:
     throw std::runtime_error("Unknown I type Instruction");
@@ -197,5 +216,27 @@ void Executor::execute_b_type(const DecodedInstruction& ir,
     registers.pc += ir.imm;
   } else {
     registers.pc += 4;
+  }
+}
+
+void Executor::execute_s_type(const DecodedInstruction& ir,
+                              Registers& registers, Memory& memory) {
+  uint32_t rs1 = registers.read(ir.rs1);
+  uint32_t rs2 = registers.read(ir.rs2);
+  int32_t imm = ir.imm;
+  registers.pc += 4;
+  switch (ir.type) {
+  case InstructionType::SB:
+    memory.write_byte(rs1 + imm, rs2 & 0xFF);
+    break;
+  case InstructionType::SH:
+    memory.write_halfword(rs1 + imm, rs2 & 0xFFFF);
+    break;
+  case InstructionType::SW:
+    memory.write_word(rs1 + imm, rs2);
+    break;
+  [[unlikely]]
+  default:
+    throw std::runtime_error("Unknown S type Instruction");
   }
 }

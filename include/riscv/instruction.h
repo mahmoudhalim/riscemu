@@ -34,6 +34,11 @@ enum class InstructionType {
   SLLI,
   SRLI,
   SRAI,
+  LW,
+  LH,
+  LHU,
+  LB,
+  LBU,
 
   // U TYPE
   LUI,
@@ -50,6 +55,11 @@ enum class InstructionType {
   BLTU,
   BGE,
   BGEU,
+
+  // S TYPE
+  SB,
+  SH,
+  SW,
 };
 
 struct DecodedInstruction {
