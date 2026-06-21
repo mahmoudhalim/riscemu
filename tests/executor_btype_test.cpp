@@ -1,11 +1,13 @@
 #include "core/decoder.h"
 #include "core/executor.h"
 #include "core/registers.h"
+#include "memory/memory.h"
 
 #include <gtest/gtest.h>
 #include <stdexcept>
 
 namespace {
+Memory mem(1024);
 constexpr uint32_t encode_b(int32_t imm, uint8_t rs2, uint8_t rs1,
                             uint8_t funct3) {
   constexpr uint32_t opcode = 0x63;
@@ -28,7 +30,7 @@ TEST(ExecutorBTypeTest, BeqTaken) {
   regs.write(2, 10);
 
   auto ir = Decoder::decode(encode_b(12, 2, 1, 0b000)); // BEQ x1, x2, +12
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x100u + 12);
 }
@@ -40,7 +42,7 @@ TEST(ExecutorBTypeTest, BeqNotTaken) {
   regs.write(2, 11);
 
   auto ir = Decoder::decode(encode_b(12, 2, 1, 0b000)); // BEQ x1, x2, +12
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x100u + 4);
 }
@@ -52,7 +54,7 @@ TEST(ExecutorBTypeTest, BneTaken) {
   regs.write(2, 11);
 
   auto ir = Decoder::decode(encode_b(-8, 2, 1, 0b001)); // BNE x1, x2, -8
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x100u - 8);
 }
@@ -64,7 +66,7 @@ TEST(ExecutorBTypeTest, BltSignedTaken) {
   regs.write(2, 1);          // 1
 
   auto ir = Decoder::decode(encode_b(4, 2, 1, 0b100)); // BLT x1, x2, +4
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x104u);
 }
@@ -76,7 +78,7 @@ TEST(ExecutorBTypeTest, BltSignedNotTaken) {
   regs.write(2, 0xFFFFFFFF); // -1
 
   auto ir = Decoder::decode(encode_b(4, 2, 1, 0b100)); // BLT x1, x2, +4
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x104u); // PC+4 because not taken
 }
@@ -88,7 +90,7 @@ TEST(ExecutorBTypeTest, BltuUnsignedTaken) {
   regs.write(2, 0xFFFFFFFF);
 
   auto ir = Decoder::decode(encode_b(4, 2, 1, 0b110)); // BLTU x1, x2, +4
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x104u);
 }
@@ -100,7 +102,7 @@ TEST(ExecutorBTypeTest, BgeSignedTaken) {
   regs.write(2, 10);
 
   auto ir = Decoder::decode(encode_b(4, 2, 1, 0b101)); // BGE x1, x2, +4
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x104u);
 }
@@ -112,7 +114,7 @@ TEST(ExecutorBTypeTest, BgeuUnsignedNotTaken) {
   regs.write(2, 0xFFFFFFFF);
 
   auto ir = Decoder::decode(encode_b(4, 2, 1, 0b111)); // BGEU x1, x2, +4
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x104u); // PC+4 because not taken
 }

@@ -1,11 +1,13 @@
 #include "core/decoder.h"
 #include "core/executor.h"
 #include "core/registers.h"
+#include "memory/memory.h"
 
 #include <gtest/gtest.h>
 #include <stdexcept>
 
 namespace {
+Memory mem(1024);
 constexpr uint32_t encode_r(uint8_t rd, uint8_t rs1, uint8_t rs2,
                             uint8_t funct3, uint8_t funct7) {
   constexpr uint32_t opcode = 0x33;
@@ -23,7 +25,7 @@ TEST(ExecutorRTypeTest, AddsRegisters) {
   regs.write(2, 3);
 
   auto ir = Decoder::decode(encode_r(3, 1, 2, 0b000, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(3), 13u);
 }
@@ -34,7 +36,7 @@ TEST(ExecutorRTypeTest, SubtractsRegisters) {
   regs.write(2, 4);
 
   auto ir = Decoder::decode(encode_r(4, 3, 2, 0b000, 0b0100000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(4), 6u);
 }
@@ -45,7 +47,7 @@ TEST(ExecutorRTypeTest, ShiftsLeftLogical) {
   regs.write(2, 4);
 
   auto ir = Decoder::decode(encode_r(5, 1, 2, 0b001, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(5), 16u);
 }
@@ -56,7 +58,7 @@ TEST(ExecutorRTypeTest, SetsLessThanSigned) {
   regs.write(2, 1);
 
   auto ir = Decoder::decode(encode_r(6, 1, 2, 0b010, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(6), 1u);
 }
@@ -67,7 +69,7 @@ TEST(ExecutorRTypeTest, SetsLessThanUnsigned) {
   regs.write(2, 2);
 
   auto ir = Decoder::decode(encode_r(7, 1, 2, 0b011, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(7), 1u);
 }
@@ -78,7 +80,7 @@ TEST(ExecutorRTypeTest, XorsRegisters) {
   regs.write(2, 0b1100);
 
   auto ir = Decoder::decode(encode_r(8, 1, 2, 0b100, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(8), 0b0110u);
 }
@@ -89,7 +91,7 @@ TEST(ExecutorRTypeTest, ShiftsRightLogical) {
   regs.write(2, 2);
 
   auto ir = Decoder::decode(encode_r(9, 1, 2, 0b101, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(9), 0b10u);
 }
@@ -100,7 +102,7 @@ TEST(ExecutorRTypeTest, ShiftsRightArithmetic) {
   regs.write(2, 1);
 
   auto ir = Decoder::decode(encode_r(10, 1, 2, 0b101, 0b0100000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(10), 0xC0000000u);
 }
@@ -111,7 +113,7 @@ TEST(ExecutorRTypeTest, OrsRegisters) {
   regs.write(2, 0b1100);
 
   auto ir = Decoder::decode(encode_r(11, 1, 2, 0b110, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(11), 0b1110u);
 }
@@ -122,15 +124,15 @@ TEST(ExecutorRTypeTest, AndsRegisters) {
   regs.write(2, 0b1100);
 
   auto ir = Decoder::decode(encode_r(12, 1, 2, 0b111, 0b0000000));
-  Executor::execute(ir, regs);
+  Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.read(12), 0b1000u);
 }
 
 TEST(ExecutorRTypeTest, ThrowsOnUnsupportedFormat) {
   Registers regs;
-  // sw x0, 0(x0) -> S_TYPE, which Executor::execute does not handle.
-  auto ir = Decoder::decode(0x00002023);
+  // All-zero instruction has opcode 0 -> UNKNOWN format.
+  auto ir = Decoder::decode(0x00000000);
 
-  EXPECT_THROW(Executor::execute(ir, regs), std::runtime_error);
+  EXPECT_THROW(Executor::execute(ir, regs, mem), std::runtime_error);
 }

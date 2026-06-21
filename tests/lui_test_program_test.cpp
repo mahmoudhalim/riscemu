@@ -58,7 +58,7 @@ TEST(LuiTestProgram, RunsAllIAndUTypeInstructions) {
   for (uint32_t pc = 0; pc < loaded; pc += 4) {
     auto ir = Decoder::decode(mem.read_word(pc));
     regs.pc = pc;
-    Executor::execute(ir, regs);
+    Executor::execute(ir, regs, mem);
   }
 
   // I-type
