@@ -1,11 +1,20 @@
 #include "cpu.h"
 #include "core/decoder.h"
 #include "core/executor.h"
+#include "loader/elf_loader.h"
 #include <bitset>
 #include <iostream>
 
 CPU::CPU(std::filesystem::path path) : mem_(4 * 1024 * 1024) {
-  program_size_bytes_ = mem_.load_file(path);
+  auto res = ELFLoader::load(path, mem_);
+  if (!res) {
+    std::cerr << res.error() << '\n';
+    exit(1);
+  }
+  regs_.pc = res->entry_point;
+  program_end_addr_ = res->max_addr;
+  uint32_t STACK_TOP = mem_.size_bytes() - 16; // Near top of memory
+  regs_.write(2, STACK_TOP);
 }
 
 void CPU::step() {
@@ -18,7 +27,7 @@ void CPU::step() {
 }
 
 void CPU::run() {
-  while (regs_.pc < program_size_bytes_) {
+  while (regs_.pc < program_end_addr_) {
     step();
   }
 }

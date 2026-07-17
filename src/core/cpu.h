@@ -23,5 +23,5 @@ public:
 private:
   Registers regs_{};
   Memory mem_;
-  size_t program_size_bytes_ = 0;
+  uint32_t program_end_addr_ = 0;
 };
