@@ -14,6 +14,7 @@ add_library(riscv-core STATIC
     src/core/decoder.cpp
     src/core/executor.cpp
     src/memory/memory.cpp
+    src/loader/elf_loader.cpp
 )
 
 target_include_directories(riscv-core
