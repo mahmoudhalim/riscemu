@@ -1,6 +1,7 @@
 #include "core/cpu.h"
 #include "core/registers.h"
 
+#include <elf.h>
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -8,12 +9,40 @@
 #include <vector>
 
 namespace {
-std::filesystem::path write_temp_binary(const std::vector<uint8_t> &data) {
+std::filesystem::path write_temp_elf(const std::vector<uint8_t> &code) {
   auto path = std::filesystem::temp_directory_path() /
-              ("riscemu_cpu_" + std::to_string(std::rand()) + ".bin");
+              ("riscemu_cpu_" + std::to_string(std::rand()) + ".elf");
+
+  Elf32_Ehdr ehdr{};
+  ehdr.e_ident[EI_MAG0] = ELFMAG0;
+  ehdr.e_ident[EI_MAG1] = 'E';
+  ehdr.e_ident[EI_MAG2] = 'L';
+  ehdr.e_ident[EI_MAG3] = 'F';
+  ehdr.e_ident[EI_CLASS] = ELFCLASS32;
+  ehdr.e_ident[EI_DATA] = ELFDATA2LSB;
+  ehdr.e_ident[EI_VERSION] = EV_CURRENT;
+  ehdr.e_type = ET_EXEC;
+  ehdr.e_machine = EM_RISCV;
+  ehdr.e_entry = 0;
+  ehdr.e_phoff = sizeof(Elf32_Ehdr);
+  ehdr.e_ehsize = sizeof(Elf32_Ehdr);
+  ehdr.e_phentsize = sizeof(Elf32_Phdr);
+  ehdr.e_phnum = 1;
+
+  Elf32_Phdr phdr{};
+  phdr.p_type = PT_LOAD;
+  phdr.p_offset = sizeof(Elf32_Ehdr) + sizeof(Elf32_Phdr);
+  phdr.p_vaddr = 0;
+  phdr.p_paddr = 0;
+  phdr.p_filesz = code.size();
+  phdr.p_memsz = code.size();
+  phdr.p_flags = PF_R | PF_X;
+  phdr.p_align = 0x1000;
+
   std::ofstream f(path, std::ios::binary);
-  f.write(reinterpret_cast<const char *>(data.data()), data.size());
-  f.close();
+  f.write(reinterpret_cast<const char *>(&ehdr), sizeof(ehdr));
+  f.write(reinterpret_cast<const char *>(&phdr), sizeof(phdr));
+  f.write(reinterpret_cast<const char *>(code.data()), code.size());
   return path;
 }
 } // namespace
@@ -27,7 +56,7 @@ TEST(CpuRunTest, ExecutesLinearProgramAndStopsAtProgramEnd) {
       0x93, 0x00, 0x10, 0x00, 0x13, 0x01, 0x20, 0x00,
       0xB3, 0x81, 0x20, 0x00,
   };
-  auto path = write_temp_binary(bin);
+  auto path = write_temp_elf(bin);
   CPU cpu(path);
   std::filesystem::remove(path);
 
@@ -55,7 +84,7 @@ TEST(CpuRunTest, ForwardJalSkipsOverInstructions) {
       // jal x0, +8 = 0x0080006F
       0x6F, 0x00, 0x80, 0x00,
   };
-  auto path = write_temp_binary(bin);
+  auto path = write_temp_elf(bin);
   CPU cpu(path);
   std::filesystem::remove(path);
 
@@ -92,7 +121,7 @@ TEST(CpuRunTest, BackwardJalRepeatsLastTwoInstructions) {
       // jal x0, -8  → 0xFF9FF06F
       0x6F, 0xF0, 0x9F, 0xFF,
   };
-  auto path = write_temp_binary(bin);
+  auto path = write_temp_elf(bin);
   CPU cpu(path);
   std::filesystem::remove(path);
 
@@ -125,7 +154,7 @@ TEST(CpuRunTest, JalrExitsProgramByJumpingOutOfBounds) {
       // little-endian bytes: 67 80 00 00
       0x67, 0x80, 0x00, 0x00,
   };
-  auto path = write_temp_binary(bin);
+  auto path = write_temp_elf(bin);
   CPU cpu(path);
   std::filesystem::remove(path);
 
@@ -153,7 +182,7 @@ TEST(CpuRunTest, BneLoopCalculatesSum) {
       0xE3, 0x9C, 0x00, 0xFE, // bne x1, x0, loop (-8) -> 0xFE009CE3
       0x6F, 0x00, 0x80, 0x00, // jal x0, +8
   };
-  auto path = write_temp_binary(bin);
+  auto path = write_temp_elf(bin);
   CPU cpu(path);
   std::filesystem::remove(path);
 
