@@ -18,6 +18,8 @@ public:
   void write_word(uint32_t address, uint32_t value);
 
   size_t load_file(const std::filesystem::path& path);
+  void load_segment(uint32_t address, const uint8_t* data, size_t size);
+  void clear(uint32_t addr, size_t n);
 
   size_t size_bytes() const { return bytes_.size(); }
 

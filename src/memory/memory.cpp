@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 
@@ -72,4 +73,13 @@ size_t Memory::load_file(const std::filesystem::path& path) {
   file.read(reinterpret_cast<char*>(bytes_.data()),
             static_cast<std::streamsize>(file_size));
   return file_size;
+}
+void Memory::load_segment(uint32_t addr, const uint8_t* data, size_t size) {
+  assert(addr < bytes_.size() && (bytes_.size() - addr) >= size);
+  std::memcpy(&bytes_[addr], data, size);
+}
+
+void Memory::clear(uint32_t addr, size_t size) {
+  assert(addr < this->size_bytes() && (this->size_bytes() - addr) >= size);
+  std::memset(&bytes_[addr], 0, size);
 }
