@@ -4,7 +4,7 @@
 BUILD_DIR ?= build
 RELEASE_BUILD_DIR ?= build-release
 BUILD_TYPE ?= Debug
-PROGRAM ?= examples/rtype_test.hex
+PROGRAM ?= fib.elf
 
 all: build
 
