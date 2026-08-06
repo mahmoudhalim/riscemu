@@ -180,3 +180,19 @@ TEST(DecoderTest, DecodesJalr) {
   EXPECT_EQ(ir.funct3, 0);
   EXPECT_EQ(ir.imm, 16);
 }
+
+TEST(DecoderTest, DecodesEcallAsSystem) {
+  constexpr uint32_t ecall = 0x00000073;
+  auto ir = Decoder::decode(ecall);
+
+  EXPECT_EQ(ir.format, InstructionFormat::SYSTEM);
+  EXPECT_EQ(ir.type, InstructionType::ECALL);
+}
+
+TEST(DecoderTest, DecodesEbreakAsSystem) {
+  constexpr uint32_t ebreak = 0x00100073;
+  auto ir = Decoder::decode(ebreak);
+
+  EXPECT_EQ(ir.format, InstructionFormat::SYSTEM);
+  EXPECT_EQ(ir.type, InstructionType::EBREAK);
+}

@@ -48,7 +48,8 @@ DecodedInstruction Decoder::decode(uint32_t instruction) {
                                     : static_cast<int32_t>(raw_imm);
     ir.imm = imm;
   }
-  ir.type = get_instruction_type(ir.format, ir.opcode, ir.funct3, ir.funct7);
+  ir.type =
+      get_instruction_type(ir.format, ir.opcode, ir.funct3, ir.funct7, ir.rs2);
   return ir;
 }
 
@@ -59,8 +60,9 @@ InstructionFormat Decoder::get_instruction_format(uint8_t opcode) {
   case 0b0010011: // OP-IMM
   case 0b0000011: // LOAD
   case 0b1100111: // JALR
-  case 0b1110011: // SYSTEM
     return InstructionFormat::I_TYPE;
+  case 0b1110011: // SYSTEM
+    return InstructionFormat::SYSTEM;
   case 0b0100011:
     return InstructionFormat::S_TYPE;
   case 0b1100011:
@@ -77,7 +79,7 @@ InstructionFormat Decoder::get_instruction_format(uint8_t opcode) {
 
 InstructionType Decoder::get_instruction_type(InstructionFormat format,
                                               uint8_t opcode, uint8_t funct3,
-                                              uint8_t funct7) {
+                                              uint8_t funct7, uint8_t rs2) {
   // R-type instructions
   if (format == InstructionFormat::R_TYPE) {
     if (funct3 == 0b000) {
@@ -135,6 +137,11 @@ InstructionType Decoder::get_instruction_type(InstructionFormat format,
         return InstructionType::LBU;
       if (funct3 == 0b101)
         return InstructionType::LHU;
+    }
+  } else if (format == InstructionFormat::SYSTEM) {
+    // ECALL: funct3=0, rs2=0. EBREAK: funct3=0, rs2=1.
+    if (funct3 == 0b000) {
+      return (rs2 == 1) ? InstructionType::EBREAK : InstructionType::ECALL;
     }
   } else if (format == InstructionFormat::U_TYPE) {
     if (opcode == 0b0110111)

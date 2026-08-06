@@ -7,6 +7,7 @@ enum class InstructionFormat {
   B_TYPE,
   U_TYPE,
   J_TYPE,
+  SYSTEM,
   UNKNOWN
 };
 
@@ -60,6 +61,10 @@ enum class InstructionType {
   SB,
   SH,
   SW,
+
+  // SYSTEM
+  ECALL,
+  EBREAK,
 };
 
 struct DecodedInstruction {
