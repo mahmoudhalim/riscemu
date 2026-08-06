@@ -1,5 +1,6 @@
 #include "memory.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -82,4 +83,11 @@ void Memory::load_segment(uint32_t addr, const uint8_t* data, size_t size) {
 void Memory::clear(uint32_t addr, size_t size) {
   assert(addr < this->size_bytes() && (this->size_bytes() - addr) >= size);
   std::memset(&bytes_[addr], 0, size);
+}
+
+std::vector<uint8_t> Memory::read_span(uint32_t address, size_t count) const {
+  size_t available = (address < bytes_.size()) ? bytes_.size() - address : 0;
+  size_t n = std::min(count, available);
+  return std::vector<uint8_t>(bytes_.begin() + address,
+                              bytes_.begin() + address + n);
 }

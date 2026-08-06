@@ -21,6 +21,8 @@ public:
   void load_segment(uint32_t address, const uint8_t* data, size_t size);
   void clear(uint32_t addr, size_t n);
 
+  std::vector<uint8_t> read_span(uint32_t address, size_t count) const;
+
   size_t size_bytes() const { return bytes_.size(); }
 
 private:
