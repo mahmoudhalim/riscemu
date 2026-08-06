@@ -1,4 +1,4 @@
-volatile unsigned int result;
+#include <stdio.h>
 
 unsigned int fibonacci(int n) {
   if (n <= 0)
@@ -18,10 +18,7 @@ unsigned int fibonacci(int n) {
   return current;
 }
 
-int main() {
-  // Calculate the 10th Fibonacci number (55, or 0x37 in hex)
-  result = fibonacci(10);
-
-  // The default crt0 calls exit() -> ECALL SYS_exit(93), terminating cleanly.
+int main(void) {
+  printf("fibonacci(10) = %u\n", fibonacci(10));
   return 0;
 }

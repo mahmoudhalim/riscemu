@@ -1,10 +1,13 @@
-.PHONY: all configure build test run clean rebuild release test-release
+.PHONY: all configure build test run clean rebuild release test-release examples
 
 
 BUILD_DIR ?= build
 RELEASE_BUILD_DIR ?= build-release
 BUILD_TYPE ?= Debug
-PROGRAM ?= fib.elf
+PROGRAM ?= examples/fib.elf
+RISCV_GCC ?= riscv64-unknown-elf-gcc
+RISCV_FLAGS ?= -march=rv32i -mabi=ilp32 -static -O1
+EXAMPLES := $(patsubst examples/%.c,examples/%.elf,$(wildcard examples/*.c))
 
 all: build
 
@@ -13,6 +16,11 @@ configure:
 
 build: configure
 	cmake --build $(BUILD_DIR) --parallel
+
+examples: $(EXAMPLES)
+
+examples/%.elf: examples/%.c
+	$(RISCV_GCC) $(RISCV_FLAGS) -o $@ $<
 
 release:
 	$(MAKE) build BUILD_TYPE=Release BUILD_DIR=$(RELEASE_BUILD_DIR)
