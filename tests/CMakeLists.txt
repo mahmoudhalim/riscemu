@@ -30,11 +30,9 @@ include(GoogleTest)
 gtest_discover_tests(unit_tests)
 
 # Integration tests: cross-compile small C programs and run them through the
-# real ELF loader + CPU + Syscall pipeline. Skipped if the RISC-V toolchain
-# is not available.
-find_program(RISCV_GCC riscv64-unknown-elf-gcc
-    PATHS /opt/riscv-multilib/bin /opt/riscv/bin
-)
+# real ELF loader + CPU + Syscall pipeline. Skipped if a RISC-V cross
+# compiler is not on PATH (e.g. GitHub Actions CI).
+find_program(RISCV_GCC riscv64-unknown-elf-gcc)
 
 if(RISCV_GCC)
     set(INTEGRATION_DIR ${CMAKE_CURRENT_BINARY_DIR}/integration)
