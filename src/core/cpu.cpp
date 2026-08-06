@@ -5,7 +5,7 @@
 #include <bitset>
 #include <iostream>
 
-CPU::CPU(std::filesystem::path path) : mem_(4 * 1024 * 1024) {
+CPU::CPU(std::filesystem::path path) : mem_(4 * 1024 * 1024), syscall_(mem_) {
   auto res = ELFLoader::load(path, mem_);
   if (!res) {
     std::cerr << res.error() << '\n';
@@ -20,14 +20,18 @@ CPU::CPU(std::filesystem::path path) : mem_(4 * 1024 * 1024) {
 void CPU::step() {
   uint32_t cur_pc = regs_.pc;
   auto ir = Decoder::decode(mem_.read_word(cur_pc));
+  auto result = Executor::execute(ir, regs_, mem_, syscall_);
+  if (result.halt) {
+    halted_ = true;
+    exit_code_ = result.exit_code;
+  }
   std::cout << std::bitset<32>(ir.raw) << '\n';
-  Executor::execute(ir, regs_, mem_);
   std::cout << "Executed " << (int)ir.type << " | x" << (int)ir.rd << " = "
             << regs_.read(ir.rd) << std::endl;
 }
 
 void CPU::run() {
-  while (regs_.pc < program_end_addr_) {
+  while (regs_.pc < program_end_addr_ && !halted_) {
     step();
   }
 }
