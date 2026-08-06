@@ -8,6 +8,5 @@ int main(int argc, char** argv) {
   }
   CPU c{argv[1]};
   c.run();
-  c.print();
   return 0;
 }

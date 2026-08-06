@@ -12,7 +12,6 @@ public:
   CPU(std::filesystem::path path);
   void step();
   void run();
-  void print() const;
 
 #ifdef RISCEMU_TESTING
   // Test-only accessors. Define RISCEMU_TESTING in the test target's

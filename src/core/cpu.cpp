@@ -2,7 +2,6 @@
 #include "core/decoder.h"
 #include "core/executor.h"
 #include "loader/elf_loader.h"
-#include <bitset>
 #include <iostream>
 
 CPU::CPU(std::filesystem::path path) : mem_(4 * 1024 * 1024), syscall_(mem_) {
@@ -25,19 +24,10 @@ void CPU::step() {
     halted_ = true;
     exit_code_ = result.exit_code;
   }
-  std::cout << std::bitset<32>(ir.raw) << '\n';
-  std::cout << "Executed " << (int)ir.type << " | x" << (int)ir.rd << " = "
-            << regs_.read(ir.rd) << std::endl;
 }
 
 void CPU::run() {
   while (regs_.pc < program_end_addr_ && !halted_) {
     step();
-  }
-}
-
-void CPU::print() const {
-  for (int i = 0; i < 32; i++) {
-    std::cout << "X" << i << " = " << regs_.read(i) << std::endl;
   }
 }
