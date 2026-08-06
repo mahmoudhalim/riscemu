@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace {
-std::filesystem::path write_temp_elf(const std::vector<uint8_t> &code) {
+std::filesystem::path write_temp_elf(const std::vector<uint8_t>& code) {
   auto path = std::filesystem::temp_directory_path() /
               ("riscemu_cpu_" + std::to_string(std::rand()) + ".elf");
 
@@ -40,9 +40,9 @@ std::filesystem::path write_temp_elf(const std::vector<uint8_t> &code) {
   phdr.p_align = 0x1000;
 
   std::ofstream f(path, std::ios::binary);
-  f.write(reinterpret_cast<const char *>(&ehdr), sizeof(ehdr));
-  f.write(reinterpret_cast<const char *>(&phdr), sizeof(phdr));
-  f.write(reinterpret_cast<const char *>(code.data()), code.size());
+  f.write(reinterpret_cast<const char*>(&ehdr), sizeof(ehdr));
+  f.write(reinterpret_cast<const char*>(&phdr), sizeof(phdr));
+  f.write(reinterpret_cast<const char*>(code.data()), code.size());
   return path;
 }
 } // namespace
@@ -53,8 +53,7 @@ TEST(CpuRunTest, ExecutesLinearProgramAndStopsAtProgramEnd) {
   // add  x3, x1, x2
   // (end of program — PC walks off the end)
   std::vector<uint8_t> bin = {
-      0x93, 0x00, 0x10, 0x00, 0x13, 0x01, 0x20, 0x00,
-      0xB3, 0x81, 0x20, 0x00,
+      0x93, 0x00, 0x10, 0x00, 0x13, 0x01, 0x20, 0x00, 0xB3, 0x81, 0x20, 0x00,
   };
   auto path = write_temp_elf(bin);
   CPU cpu(path);
@@ -77,12 +76,36 @@ TEST(CpuRunTest, ForwardJalSkipsOverInstructions) {
   // addi x4, x0, 100 ; skipped
   // jal  x0, +8   ; target PC=0x20, out of program bounds (28 bytes) → exits
   std::vector<uint8_t> bin = {
-      0x93, 0x00, 0x10, 0x00, 0x13, 0x01, 0x20, 0x00, 0xB3, 0x81, 0x20, 0x00,
+      0x93,
+      0x00,
+      0x10,
+      0x00,
+      0x13,
+      0x01,
+      0x20,
+      0x00,
+      0xB3,
+      0x81,
+      0x20,
+      0x00,
       // jal x0, +12 = 0x00C0006F
-      0x6F, 0x00, 0xC0, 0x00,
-      0x93, 0x01, 0x30, 0x06, 0x93, 0x01, 0x40, 0x06,
+      0x6F,
+      0x00,
+      0xC0,
+      0x00,
+      0x93,
+      0x01,
+      0x30,
+      0x06,
+      0x93,
+      0x01,
+      0x40,
+      0x06,
       // jal x0, +8 = 0x0080006F
-      0x6F, 0x00, 0x80, 0x00,
+      0x6F,
+      0x00,
+      0x80,
+      0x00,
   };
   auto path = write_temp_elf(bin);
   CPU cpu(path);
@@ -93,8 +116,8 @@ TEST(CpuRunTest, ForwardJalSkipsOverInstructions) {
   EXPECT_EQ(cpu.regs().read(1), 1u);
   EXPECT_EQ(cpu.regs().read(2), 2u);
   EXPECT_EQ(cpu.regs().read(3), 3u);
-  EXPECT_EQ(cpu.regs().read(4), 0u);  // both writes were skipped
-  EXPECT_GE(cpu.regs().pc, 28u);     // ran off the end (28 bytes = program size)
+  EXPECT_EQ(cpu.regs().read(4), 0u); // both writes were skipped
+  EXPECT_GE(cpu.regs().pc, 28u); // ran off the end (28 bytes = program size)
 }
 
 TEST(CpuRunTest, BackwardJalRepeatsLastTwoInstructions) {
@@ -113,13 +136,25 @@ TEST(CpuRunTest, BackwardJalRepeatsLastTwoInstructions) {
   // the correctness of the JAL target computation.
   std::vector<uint8_t> bin = {
       // addi x5, x0, 0
-      0x93, 0x02, 0x00, 0x00,
+      0x93,
+      0x02,
+      0x00,
+      0x00,
       // addi x5, x5, 1
-      0x93, 0x82, 0x12, 0x00,
+      0x93,
+      0x82,
+      0x12,
+      0x00,
       // addi x5, x5, 1
-      0x93, 0x82, 0x12, 0x00,
+      0x93,
+      0x82,
+      0x12,
+      0x00,
       // jal x0, -8  → 0xFF9FF06F
-      0x6F, 0xF0, 0x9F, 0xFF,
+      0x6F,
+      0xF0,
+      0x9F,
+      0xFF,
   };
   auto path = write_temp_elf(bin);
   CPU cpu(path);
@@ -148,11 +183,17 @@ TEST(CpuRunTest, JalrExitsProgramByJumpingOutOfBounds) {
       // lui x1, 0x10   → opcode 0x37, rd=1, imm20=0x10
       //               → 0x10 << 12 | (1 << 7) | 0x37 = 0x000100B7
       // little-endian bytes: B7 00 01 00
-      0xB7, 0x00, 0x01, 0x00,
+      0xB7,
+      0x00,
+      0x01,
+      0x00,
       // jalr x0, x1, 0  → opcode 0x67, rd=0, funct3=0, rs1=1, imm=0
       //                → (1 << 15) | 0x67 = 0x00008067
       // little-endian bytes: 67 80 00 00
-      0x67, 0x80, 0x00, 0x00,
+      0x67,
+      0x80,
+      0x00,
+      0x00,
   };
   auto path = write_temp_elf(bin);
   CPU cpu(path);
@@ -175,12 +216,18 @@ TEST(CpuRunTest, BneLoopCalculatesSum) {
   //   bne  x1, x0, loop ; if n != 0, goto loop (-8 bytes)
   //   jal  x0, +8       ; jump out of program to end test
   std::vector<uint8_t> bin = {
-      0x93, 0x00, 0x30, 0x00, // addi x1, x0, 3 (0x00300093)
-      0x13, 0x01, 0x00, 0x00, // addi x2, x0, 0 (0x00000113)
-      0x33, 0x01, 0x11, 0x00, // loop: add x2, x2, x1 (rd=2, rs1=2, rs2=1) -> 0x00110133
-      0x93, 0x80, 0xF0, 0xFF, // addi x1, x1, -1 (rd=1, rs1=1, imm=-1) -> 0xFFF08093
-      0xE3, 0x9C, 0x00, 0xFE, // bne x1, x0, loop (-8) -> 0xFE009CE3
-      0x6F, 0x00, 0x80, 0x00, // jal x0, +8
+      0x93, 0x00,
+      0x30, 0x00, // addi x1, x0, 3 (0x00300093)
+      0x13, 0x01,
+      0x00, 0x00, // addi x2, x0, 0 (0x00000113)
+      0x33, 0x01,
+      0x11, 0x00, // loop: add x2, x2, x1 (rd=2, rs1=2, rs2=1) -> 0x00110133
+      0x93, 0x80,
+      0xF0, 0xFF, // addi x1, x1, -1 (rd=1, rs1=1, imm=-1) -> 0xFFF08093
+      0xE3, 0x9C,
+      0x00, 0xFE, // bne x1, x0, loop (-8) -> 0xFE009CE3
+      0x6F, 0x00,
+      0x80, 0x00, // jal x0, +8
   };
   auto path = write_temp_elf(bin);
   CPU cpu(path);
@@ -190,4 +237,37 @@ TEST(CpuRunTest, BneLoopCalculatesSum) {
 
   EXPECT_EQ(cpu.regs().read(2), 6u); // 3+2+1 = 6
   EXPECT_EQ(cpu.regs().read(1), 0u);
+}
+
+TEST(CpuRunTest, EcallExitHaltsWithExitCode) {
+  // addi  a0, x0, 7    ; exit code 7
+  // addi  a7, x0, 93    ; SYS_exit
+  // ecall                ; 0x00000073
+  std::vector<uint8_t> bin = {
+      // addi a0(x10), x0, 7  -> 0x00700513
+      0x13,
+      0x05,
+      0x70,
+      0x00,
+      // addi a7(x17), x0, 93 -> 0x05D00893
+      0x93,
+      0x08,
+      0xD0,
+      0x05,
+      // ecall -> 0x00000073
+      0x73,
+      0x00,
+      0x00,
+      0x00,
+  };
+  auto path = write_temp_elf(bin);
+  CPU cpu(path);
+  std::filesystem::remove(path);
+
+  cpu.run();
+
+  EXPECT_TRUE(cpu.halted());
+  EXPECT_EQ(cpu.exit_code(), 7);
+  EXPECT_EQ(cpu.regs().read(10), 7u);
+  EXPECT_EQ(cpu.regs().pc, 8u); // halt happens without advancing past ECALL
 }
