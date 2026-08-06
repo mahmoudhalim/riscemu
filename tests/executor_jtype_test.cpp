@@ -16,9 +16,8 @@ constexpr uint32_t encode_j(int32_t imm, uint8_t rd = 0) {
   uint32_t bits_30_21 = (u >> 1) & 0x3FF;
   uint32_t bit_20 = (u >> 11) & 0x1;
   uint32_t bits_19_12 = (u >> 12) & 0xFF;
-  return opcode | (static_cast<uint32_t>(rd) << 7) |
-         (bits_19_12 << 12) | (bit_20 << 20) | (bits_30_21 << 21) |
-         (bit_31 << 31);
+  return opcode | (static_cast<uint32_t>(rd) << 7) | (bits_19_12 << 12) |
+         (bit_20 << 20) | (bits_30_21 << 21) | (bit_31 << 31);
 }
 } // namespace
 

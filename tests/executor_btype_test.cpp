@@ -17,9 +17,10 @@ constexpr uint32_t encode_b(int32_t imm, uint8_t rs2, uint8_t rs1,
   uint32_t b10_5 = (uimm >> 5) & 0x3F;
   uint32_t b4_1 = (uimm >> 1) & 0xF;
 
-  return opcode | (b11 << 7) | (b4_1 << 8) | (static_cast<uint32_t>(funct3) << 12) |
-         (static_cast<uint32_t>(rs1) << 15) | (static_cast<uint32_t>(rs2) << 20) |
-         (b10_5 << 25) | (b12 << 31);
+  return opcode | (b11 << 7) | (b4_1 << 8) |
+         (static_cast<uint32_t>(funct3) << 12) |
+         (static_cast<uint32_t>(rs1) << 15) |
+         (static_cast<uint32_t>(rs2) << 20) | (b10_5 << 25) | (b12 << 31);
 }
 } // namespace
 

@@ -13,8 +13,7 @@ constexpr uint32_t encode_i(uint8_t rd, uint8_t rs1, uint8_t funct3,
                             uint8_t opcode = 0x13) {
   // I-type encoding: opcode in bits[6:0] (default 0x13 = OP-IMM), imm[11:0]
   // in bits[31:20]. funct7 in bits[31:25] is only used for shift variants.
-  return static_cast<uint32_t>(opcode) |
-         (static_cast<uint32_t>(rd) << 7) |
+  return static_cast<uint32_t>(opcode) | (static_cast<uint32_t>(rd) << 7) |
          (static_cast<uint32_t>(funct3) << 12) |
          (static_cast<uint32_t>(rs1) << 15) |
          ((static_cast<uint32_t>(imm) & 0xFFF) << 20) |
@@ -120,8 +119,8 @@ TEST(ExecutorITypeTest, JalrClearsLsbOfTarget) {
   Registers regs;
   regs.pc = 0x40;
   regs.write(2, 0x100);
-  auto ir =
-      Decoder::decode(encode_i(1, 2, 0b000, 7, 0, JALR_OPCODE)); // 0x100 + 7 = 0x107
+  auto ir = Decoder::decode(
+      encode_i(1, 2, 0b000, 7, 0, JALR_OPCODE)); // 0x100 + 7 = 0x107
   Executor::execute(ir, regs, mem);
 
   EXPECT_EQ(regs.pc, 0x106u);

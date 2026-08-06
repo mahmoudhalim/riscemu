@@ -15,6 +15,5 @@ using LoadResult = std::expected<LoadInfo, std::string>;
 
 class ELFLoader {
 public:
-  static LoadResult load(const std::filesystem::path& filename,
-                         Memory& Memory);
+  static LoadResult load(const std::filesystem::path& filename, Memory& Memory);
 };

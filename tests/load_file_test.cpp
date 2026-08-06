@@ -8,19 +8,19 @@
 #include <vector>
 
 namespace {
-std::filesystem::path write_temp_binary(const std::vector<uint8_t> &data) {
+std::filesystem::path write_temp_binary(const std::vector<uint8_t>& data) {
   auto path = std::filesystem::temp_directory_path() /
               ("riscemu_load_file_" + std::to_string(std::rand()) + ".bin");
   std::ofstream f(path, std::ios::binary);
-  f.write(reinterpret_cast<const char *>(data.data()), data.size());
+  f.write(reinterpret_cast<const char*>(data.data()), data.size());
   f.close();
   return path;
 }
 } // namespace
 
 TEST(LoadFileTest, LoadsBinaryIntoMemory) {
-  std::vector<uint8_t> bin = {0x44, 0x33, 0x22, 0x11, 0xb3, 0x81, 0x20, 0x00,
-                              0xef, 0xbe, 0xad, 0xde};
+  std::vector<uint8_t> bin = {0x44, 0x33, 0x22, 0x11, 0xb3, 0x81,
+                              0x20, 0x00, 0xef, 0xbe, 0xad, 0xde};
   auto path = write_temp_binary(bin);
   Memory mem(64);
 

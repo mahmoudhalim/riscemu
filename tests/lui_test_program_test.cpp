@@ -1,7 +1,7 @@
 #include "core/decoder.h"
 #include "core/executor.h"
-#include "memory/memory.h"
 #include "core/registers.h"
+#include "memory/memory.h"
 
 #include <filesystem>
 #include <fstream>
@@ -10,11 +10,11 @@
 #include <vector>
 
 namespace {
-std::filesystem::path write_temp_binary(const std::vector<uint8_t> &data) {
+std::filesystem::path write_temp_binary(const std::vector<uint8_t>& data) {
   auto path = std::filesystem::temp_directory_path() /
               ("riscemu_i_u_type_" + std::to_string(std::rand()) + ".bin");
   std::ofstream f(path, std::ios::binary);
-  f.write(reinterpret_cast<const char *>(data.data()), data.size());
+  f.write(reinterpret_cast<const char*>(data.data()), data.size());
   f.close();
   return path;
 }
@@ -40,11 +40,11 @@ TEST(LuiTestProgram, RunsAllIAndUTypeInstructions) {
   // 800006b7  lui  x13, 0x80000
   // 4016d713  srai x14, x13, 1
   std::vector<uint8_t> bin = {
-      0x93, 0x00, 0xa0, 0x00, 0x13, 0x01, 0x30, 0x00, 0x93, 0xc1, 0x50, 0x00,
-      0x13, 0xe2, 0x50, 0x00, 0x93, 0xf2, 0x50, 0x00, 0x13, 0xa3, 0x40, 0x01,
-      0x93, 0xb3, 0x40, 0x01, 0x13, 0x94, 0x20, 0x00, 0x93, 0xd4, 0x10, 0x00,
-      0x37, 0x55, 0x34, 0x12, 0x37, 0x16, 0x00, 0x00, 0xb7, 0x06, 0x00, 0x80,
-      0x13, 0xd7, 0x16, 0x40,
+      0x93, 0x00, 0xa0, 0x00, 0x13, 0x01, 0x30, 0x00, 0x93, 0xc1, 0x50,
+      0x00, 0x13, 0xe2, 0x50, 0x00, 0x93, 0xf2, 0x50, 0x00, 0x13, 0xa3,
+      0x40, 0x01, 0x93, 0xb3, 0x40, 0x01, 0x13, 0x94, 0x20, 0x00, 0x93,
+      0xd4, 0x10, 0x00, 0x37, 0x55, 0x34, 0x12, 0x37, 0x16, 0x00, 0x00,
+      0xb7, 0x06, 0x00, 0x80, 0x13, 0xd7, 0x16, 0x40,
   };
 
   auto path = write_temp_binary(bin);
@@ -64,13 +64,13 @@ TEST(LuiTestProgram, RunsAllIAndUTypeInstructions) {
   // I-type
   EXPECT_EQ(regs.read(1), 10u);
   EXPECT_EQ(regs.read(2), 3u);
-  EXPECT_EQ(regs.read(3), 15u);  // xori: 10 ^ 5
-  EXPECT_EQ(regs.read(4), 15u);  // ori:  10 | 5
-  EXPECT_EQ(regs.read(5), 0u);   // andi: 10 & 5
-  EXPECT_EQ(regs.read(6), 1u);   // slti
-  EXPECT_EQ(regs.read(7), 1u);   // sltiu
-  EXPECT_EQ(regs.read(8), 40u);  // slli: 10 << 2
-  EXPECT_EQ(regs.read(9), 5u);   // srli: 10 >> 1
+  EXPECT_EQ(regs.read(3), 15u); // xori: 10 ^ 5
+  EXPECT_EQ(regs.read(4), 15u); // ori:  10 | 5
+  EXPECT_EQ(regs.read(5), 0u);  // andi: 10 & 5
+  EXPECT_EQ(regs.read(6), 1u);  // slti
+  EXPECT_EQ(regs.read(7), 1u);  // sltiu
+  EXPECT_EQ(regs.read(8), 40u); // slli: 10 << 2
+  EXPECT_EQ(regs.read(9), 5u);  // srli: 10 >> 1
 
   // U-type
   EXPECT_EQ(regs.read(10), 0x12345000u); // lui

@@ -7,11 +7,12 @@
 
 namespace {
 Memory mem(1024);
-constexpr uint32_t encode_u(uint8_t rd, uint32_t imm20, uint8_t opcode = 0b0110111) {
+constexpr uint32_t encode_u(uint8_t rd, uint32_t imm20,
+                            uint8_t opcode = 0b0110111) {
   // U-type: opcode in [6:0], rd in [11:7], imm[31:12] in [31:12].
   // imm20 is the 20-bit value placed at [31:12].
-  return static_cast<uint32_t>(opcode) |
-         (static_cast<uint32_t>(rd) << 7) | ((imm20 & 0xFFFFF) << 12);
+  return static_cast<uint32_t>(opcode) | (static_cast<uint32_t>(rd) << 7) |
+         ((imm20 & 0xFFFFF) << 12);
 }
 } // namespace
 
