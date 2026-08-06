@@ -22,8 +22,6 @@ int main() {
   // Calculate the 10th Fibonacci number (55, or 0x37 in hex)
   result = fibonacci(10);
 
-  // Trapping loop to stop the simulation gracefully
-  while (1)
-    ;
+  // The default crt0 calls exit() -> ECALL SYS_exit(93), terminating cleanly.
   return 0;
 }
