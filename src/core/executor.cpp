@@ -1,11 +1,13 @@
 #include "executor.h"
 #include "core/registers.h"
 #include "riscv/instruction.h"
+#include "system/syscall.h"
 #include <cstdint>
 #include <stdexcept>
 
-void Executor::execute(const DecodedInstruction& ir, Registers& registers,
-                       Memory& memory) {
+ExecutionResult Executor::execute(const DecodedInstruction& ir,
+                                  Registers& registers, Memory& memory,
+                                  Syscall& syscall) {
   switch (ir.format) {
   case InstructionFormat::R_TYPE:
     return Executor::execute_r_type(ir, registers);
@@ -19,13 +21,21 @@ void Executor::execute(const DecodedInstruction& ir, Registers& registers,
     return Executor::execute_b_type(ir, registers);
   case InstructionFormat::S_TYPE:
     return Executor::execute_s_type(ir, registers, memory);
+  case InstructionFormat::SYSTEM:
+    return Executor::exec_system(ir, registers, syscall);
   default:
     throw std::runtime_error("How Did You do this ?");
   }
 }
 
-void Executor::execute_r_type(const DecodedInstruction& ir,
-                              Registers& registers) {
+ExecutionResult Executor::execute(const DecodedInstruction& ir,
+                                  Registers& registers, Memory& memory) {
+  Syscall syscall(memory);
+  return Executor::execute(ir, registers, memory, syscall);
+}
+
+ExecutionResult Executor::execute_r_type(const DecodedInstruction& ir,
+                                         Registers& registers) {
   registers.pc += 4;
   uint8_t rd = ir.rd;
 
@@ -79,9 +89,11 @@ void Executor::execute_r_type(const DecodedInstruction& ir,
   default:
     throw std::runtime_error("Unknown R type Instruction");
   }
+  return {};
 }
-void Executor::execute_i_type(const DecodedInstruction& ir,
-                              Registers& registers, const Memory& memory) {
+ExecutionResult Executor::execute_i_type(const DecodedInstruction& ir,
+                                         Registers& registers,
+                                         const Memory& memory) {
   uint8_t rd = ir.rd;
   uint32_t rs1 = registers.read(ir.rs1);
   int32_t imm = ir.imm;
@@ -151,10 +163,11 @@ void Executor::execute_i_type(const DecodedInstruction& ir,
   default:
     throw std::runtime_error("Unknown I type Instruction");
   }
+  return {};
 }
 
-void Executor::execute_u_type(const DecodedInstruction& ir,
-                              Registers& registers) {
+ExecutionResult Executor::execute_u_type(const DecodedInstruction& ir,
+                                         Registers& registers) {
   uint8_t rd = ir.rd;
   int32_t imm = ir.imm;
   uint32_t pc_before = registers.pc;
@@ -176,16 +189,18 @@ void Executor::execute_u_type(const DecodedInstruction& ir,
   default:
     throw std::runtime_error("Unknown U type Instruction");
   }
+  return {};
 }
 
-void Executor::execute_jump(const DecodedInstruction& ir,
-                            Registers& registers) {
+ExecutionResult Executor::execute_jump(const DecodedInstruction& ir,
+                                       Registers& registers) {
   registers.write(ir.rd, registers.pc + 4);
   registers.pc = registers.pc + ir.imm;
+  return {};
 }
 
-void Executor::execute_b_type(const DecodedInstruction& ir,
-                              Registers& registers) {
+ExecutionResult Executor::execute_b_type(const DecodedInstruction& ir,
+                                         Registers& registers) {
   bool taken = false;
   switch (ir.type) {
   case InstructionType::BEQ:
@@ -217,10 +232,11 @@ void Executor::execute_b_type(const DecodedInstruction& ir,
   } else {
     registers.pc += 4;
   }
+  return {};
 }
 
-void Executor::execute_s_type(const DecodedInstruction& ir,
-                              Registers& registers, Memory& memory) {
+ExecutionResult Executor::execute_s_type(const DecodedInstruction& ir,
+                                         Registers& registers, Memory& memory) {
   uint32_t rs1 = registers.read(ir.rs1);
   uint32_t rs2 = registers.read(ir.rs2);
   int32_t imm = ir.imm;
@@ -239,4 +255,26 @@ void Executor::execute_s_type(const DecodedInstruction& ir,
   default:
     throw std::runtime_error("Unknown S type Instruction");
   }
+  return {};
+}
+
+ExecutionResult Executor::exec_system(const DecodedInstruction& instr,
+                                      Registers& regs, Syscall& syscall) {
+  ExecutionResult result;
+  if (instr.type == InstructionType::ECALL) {
+    auto sys_result =
+        syscall.handle(regs.read(17), regs.read(10), regs.read(11),
+                       regs.read(12), regs.read(13));
+    if (sys_result.should_exit) {
+      result.halt = true;
+      result.exit_code = sys_result.exit_code;
+    } else {
+      regs.write(10, static_cast<uint32_t>(sys_result.return_value));
+      regs.pc += 4; // resume after the ECALL
+    }
+  } else if (instr.type == InstructionType::EBREAK) {
+    result.halt = true;
+    result.exit_code = 0;
+  }
+  return result;
 }
