@@ -7,6 +7,7 @@ add_executable(unit_tests
     executor_utype_test.cpp
     executor_btype_test.cpp
     load_file_test.cpp
+    logger_test.cpp
     lui_test_program_test.cpp
     memory_test.cpp
     registers_test.cpp

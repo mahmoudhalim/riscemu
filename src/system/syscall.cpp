@@ -1,11 +1,11 @@
 #include "syscall.h"
 
+#include "logging/logger.h"
 #include "memory/memory.h"
 
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
-#include <print>
 #include <vector>
 
 namespace {
@@ -13,32 +13,64 @@ namespace {
 // the RV32 newlib struct stat, verified against the installed headers).
 constexpr uint32_t STAT_MODE_OFFSET = 4;
 constexpr uint32_t S_IFCHR = 0x2000;
+
+constexpr std::string_view name(uint32_t num) {
+  switch (num) {
+  case 57:
+    return "close";
+  case 63:
+    return "read";
+  case 64:
+    return "write";
+  case 80:
+    return "fstat";
+  case 93:
+    return "exit";
+  case 214:
+    return "brk";
+  default:
+    return "unknown";
+  }
+}
 } // namespace
 
 Syscall::Syscall(Memory& memory) : memory_(memory) {}
 
 Syscall::Result Syscall::handle(uint32_t syscall_num, uint32_t a0, uint32_t a1,
                                 uint32_t a2, uint32_t a3) {
+  logging::log(logging::Level::Debug, "syscall",
+               "{} num={} a0={} a1={} a2={} a3={}", name(syscall_num),
+               syscall_num, a0, a1, a2, a3);
+  Result res;
   switch (syscall_num) {
   case 93:
-    return sys_exit(a0);
+    res = sys_exit(a0);
+    break;
   case 64:
-    return sys_write(a0, a1, a2);
+    res = sys_write(a0, a1, a2);
+    break;
   case 214:
-    return sys_brk(a0);
+    res = sys_brk(a0);
+    break;
   case 80:
-    return sys_fstat(a0, a1);
+    res = sys_fstat(a0, a1);
+    break;
   case 63:
-    return sys_read(a0, a1, a2);
+    res = sys_read(a0, a1, a2);
+    break;
   case 57:
-    return sys_close(a0);
+    res = sys_close(a0);
+    break;
   default:
-    std::println(std::cerr,
-                 "[SYSCALL] Unimplemented: num={} a0={} a1={} a2={} "
-                 "a3={}",
-                 syscall_num, a0, a1, a2, a3);
-    return {.return_value = -1};
+    logging::log(logging::Level::Warn, "syscall",
+                 "unimplemented: num={} a0={} a1={} a2={} a3={}", syscall_num,
+                 a0, a1, a2, a3);
+    res = {.return_value = -1};
+    break;
   }
+  logging::log(logging::Level::Trace, "syscall", "{} -> {}", name(syscall_num),
+               res.return_value);
+  return res;
 }
 
 Syscall::Result Syscall::sys_exit(uint32_t code) {
