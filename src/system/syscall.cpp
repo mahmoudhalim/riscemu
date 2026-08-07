@@ -1,6 +1,6 @@
 #include "syscall.h"
 
-#include "logging/logger.h"
+#include "riscv/logging.h"
 #include "memory/memory.h"
 
 #include <cstdint>

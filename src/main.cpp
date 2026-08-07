@@ -1,5 +1,5 @@
-#include "core/cpu.h"
-#include "logging/logger.h"
+#include "riscv/logging.h"
+#include "riscv/simulator.h"
 
 #include <filesystem>
 #include <iostream>
@@ -13,7 +13,8 @@ constexpr std::string_view USAGE =
     "warn)\n"
     "  -v                     shorthand for --log-level=info\n"
     "  -h, --help             show this help\n"
-    "Exit status is the guest's exit code, or 2 on a usage error.\n";
+    "Exit status is the guest's exit code; 1 on load failure; 2 on a usage "
+    "error.\n";
 }
 
 int main(int argc, char** argv) {
@@ -49,7 +50,12 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  CPU c{program};
-  c.run();
-  return c.halted() ? c.exit_code() : 0;
+  Simulator sim;
+  auto load = sim.load(program);
+  if (!load) {
+    std::print(std::cerr, "riscemu: {}\n", load.error());
+    return 1;
+  }
+  sim.run();
+  return sim.halted() ? sim.exit_code() : 0;
 }

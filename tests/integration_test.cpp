@@ -1,7 +1,6 @@
-#include "core/cpu.h"
+#include "riscv/simulator.h"
 
 #include <filesystem>
-#include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
@@ -29,29 +28,32 @@ std::filesystem::path elf_path(const char* name) {
 // exercise SYS_exit and terminate with exit code 42 through the full
 // ELF loader + CPU + Syscall pipeline.
 TEST(IntegrationTest, Exit42TraversesCrtAndHonorsExitCode) {
-  CPU cpu(elf_path("exit42.elf"));
-  cpu.run();
-  EXPECT_TRUE(cpu.halted());
-  EXPECT_EQ(cpu.exit_code(), 42);
+  Simulator sim;
+  ASSERT_TRUE(sim.load(elf_path("exit42.elf")));
+  sim.run();
+  EXPECT_TRUE(sim.halted());
+  EXPECT_EQ(sim.exit_code(), 42);
 }
 
 // Requirement 3: a program calling write() directly (no stdio init) emits
 // the exact bytes and exits 0.
 TEST(IntegrationTest, DirectWriteEmitsBytes) {
-  CPU cpu(elf_path("write_test.elf"));
+  Simulator sim;
+  ASSERT_TRUE(sim.load(elf_path("write_test.elf")));
   CaptureStdout capture;
-  cpu.run();
-  EXPECT_TRUE(cpu.halted());
-  EXPECT_EQ(cpu.exit_code(), 0);
+  sim.run();
+  EXPECT_TRUE(sim.halted());
+  EXPECT_EQ(sim.exit_code(), 0);
   EXPECT_NE(capture.str().find("write-ok\n"), std::string::npos);
 }
 
 // Requirement 4: full printf exercises brk + fstat + write together.
 TEST(IntegrationTest, PrintfExercisesBrkFstatWrite) {
-  CPU cpu(elf_path("printf_test.elf"));
+  Simulator sim;
+  ASSERT_TRUE(sim.load(elf_path("printf_test.elf")));
   CaptureStdout capture;
-  cpu.run();
-  EXPECT_TRUE(cpu.halted());
-  EXPECT_EQ(cpu.exit_code(), 0);
+  sim.run();
+  EXPECT_TRUE(sim.halted());
+  EXPECT_EQ(sim.exit_code(), 0);
   EXPECT_NE(capture.str().find("printf-ok\n"), std::string::npos);
 }

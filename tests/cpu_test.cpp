@@ -1,5 +1,8 @@
 #include "core/cpu.h"
 #include "core/registers.h"
+#include "loader/elf_loader.h"
+#include "memory/memory.h"
+#include "system/syscall.h"
 
 #include <elf.h>
 #include <filesystem>
@@ -45,6 +48,24 @@ std::filesystem::path write_temp_elf(const std::vector<uint8_t>& code) {
   f.write(reinterpret_cast<const char*>(code.data()), code.size());
   return path;
 }
+
+// The component stack a Simulator would own, assembled directly so the test
+// can reach the CPU's RISCEMU_TESTING accessors.
+struct Machine {
+  Memory mem{4 * 1024 * 1024};
+  Syscall sys{mem};
+  CPU cpu{mem, sys};
+
+  bool load(const std::filesystem::path& path) {
+    auto res = ELFLoader::load(path, mem);
+    if (!res) {
+      return false;
+    }
+    cpu.initialize(res->entry_point, res->max_addr,
+                   static_cast<uint32_t>(mem.size_bytes()) - 16);
+    return true;
+  }
+};
 } // namespace
 
 TEST(CpuRunTest, ExecutesLinearProgramAndStopsAtProgramEnd) {
@@ -56,15 +77,16 @@ TEST(CpuRunTest, ExecutesLinearProgramAndStopsAtProgramEnd) {
       0x93, 0x00, 0x10, 0x00, 0x13, 0x01, 0x20, 0x00, 0xB3, 0x81, 0x20, 0x00,
   };
   auto path = write_temp_elf(bin);
-  CPU cpu(path);
+  Machine machine;
+  ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  cpu.run();
+  machine.cpu.run();
 
-  EXPECT_EQ(cpu.regs().read(1), 1u);
-  EXPECT_EQ(cpu.regs().read(2), 2u);
-  EXPECT_EQ(cpu.regs().read(3), 3u);
-  EXPECT_EQ(cpu.regs().pc, 12u); // 3 instructions × 4 bytes
+  EXPECT_EQ(machine.cpu.regs().read(1), 1u);
+  EXPECT_EQ(machine.cpu.regs().read(2), 2u);
+  EXPECT_EQ(machine.cpu.regs().read(3), 3u);
+  EXPECT_EQ(machine.cpu.regs().pc, 12u); // 3 instructions × 4 bytes
 }
 
 TEST(CpuRunTest, ForwardJalSkipsOverInstructions) {
@@ -108,16 +130,18 @@ TEST(CpuRunTest, ForwardJalSkipsOverInstructions) {
       0x00,
   };
   auto path = write_temp_elf(bin);
-  CPU cpu(path);
+  Machine machine;
+  ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  cpu.run();
+  machine.cpu.run();
 
-  EXPECT_EQ(cpu.regs().read(1), 1u);
-  EXPECT_EQ(cpu.regs().read(2), 2u);
-  EXPECT_EQ(cpu.regs().read(3), 3u);
-  EXPECT_EQ(cpu.regs().read(4), 0u); // both writes were skipped
-  EXPECT_GE(cpu.regs().pc, 28u); // ran off the end (28 bytes = program size)
+  EXPECT_EQ(machine.cpu.regs().read(1), 1u);
+  EXPECT_EQ(machine.cpu.regs().read(2), 2u);
+  EXPECT_EQ(machine.cpu.regs().read(3), 3u);
+  EXPECT_EQ(machine.cpu.regs().read(4), 0u); // both writes were skipped
+  EXPECT_GE(machine.cpu.regs().pc,
+            28u); // ran off the end (28 bytes = program size)
 }
 
 TEST(CpuRunTest, BackwardJalRepeatsLastTwoInstructions) {
@@ -157,12 +181,13 @@ TEST(CpuRunTest, BackwardJalRepeatsLastTwoInstructions) {
       0xFF,
   };
   auto path = write_temp_elf(bin);
-  CPU cpu(path);
+  Machine machine;
+  ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
   // Run a fixed number of steps to bound the test.
   for (int i = 0; i < 5; ++i) {
-    cpu.step();
+    machine.cpu.step();
   }
 
   // After 5 steps starting at PC=0x00:
@@ -171,8 +196,8 @@ TEST(CpuRunTest, BackwardJalRepeatsLastTwoInstructions) {
   //   step 2: addi x5=2
   //   step 3: jal back to 0x04
   //   step 4: addi x5=3
-  EXPECT_EQ(cpu.regs().read(5), 3u);
-  EXPECT_EQ(cpu.regs().pc, 0x08u); // PC after the most recent addi
+  EXPECT_EQ(machine.cpu.regs().read(5), 3u);
+  EXPECT_EQ(machine.cpu.regs().pc, 0x08u); // PC after the most recent addi
 }
 
 TEST(CpuRunTest, JalrExitsProgramByJumpingOutOfBounds) {
@@ -196,14 +221,15 @@ TEST(CpuRunTest, JalrExitsProgramByJumpingOutOfBounds) {
       0x00,
   };
   auto path = write_temp_elf(bin);
-  CPU cpu(path);
+  Machine machine;
+  ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  cpu.run();
+  machine.cpu.run();
 
-  EXPECT_EQ(cpu.regs().read(1), 0x10000u);
+  EXPECT_EQ(machine.cpu.regs().read(1), 0x10000u);
   // PC was set to 0x10000 by the JALR, exiting the run loop.
-  EXPECT_GE(cpu.regs().pc, 12u);
+  EXPECT_GE(machine.cpu.regs().pc, 12u);
 }
 
 TEST(CpuRunTest, BneLoopCalculatesSum) {
@@ -230,13 +256,14 @@ TEST(CpuRunTest, BneLoopCalculatesSum) {
       0x80, 0x00, // jal x0, +8
   };
   auto path = write_temp_elf(bin);
-  CPU cpu(path);
+  Machine machine;
+  ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  cpu.run();
+  machine.cpu.run();
 
-  EXPECT_EQ(cpu.regs().read(2), 6u); // 3+2+1 = 6
-  EXPECT_EQ(cpu.regs().read(1), 0u);
+  EXPECT_EQ(machine.cpu.regs().read(2), 6u); // 3+2+1 = 6
+  EXPECT_EQ(machine.cpu.regs().read(1), 0u);
 }
 
 TEST(CpuRunTest, EcallExitHaltsWithExitCode) {
@@ -261,13 +288,15 @@ TEST(CpuRunTest, EcallExitHaltsWithExitCode) {
       0x00,
   };
   auto path = write_temp_elf(bin);
-  CPU cpu(path);
+  Machine machine;
+  ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  cpu.run();
+  machine.cpu.run();
 
-  EXPECT_TRUE(cpu.halted());
-  EXPECT_EQ(cpu.exit_code(), 7);
-  EXPECT_EQ(cpu.regs().read(10), 7u);
-  EXPECT_EQ(cpu.regs().pc, 8u); // halt happens without advancing past ECALL
+  EXPECT_TRUE(machine.cpu.halted());
+  EXPECT_EQ(machine.cpu.exit_code(), 7);
+  EXPECT_EQ(machine.cpu.regs().read(10), 7u);
+  EXPECT_EQ(machine.cpu.regs().pc,
+            8u); // halt happens without advancing past ECALL
 }

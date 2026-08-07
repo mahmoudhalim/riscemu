@@ -11,6 +11,7 @@ add_executable(unit_tests
     lui_test_program_test.cpp
     memory_test.cpp
     registers_test.cpp
+    simulator_test.cpp
     syscall_test.cpp
 )
 

@@ -13,6 +13,7 @@ add_library(riscv-core STATIC
     src/core/cpu.cpp
     src/core/decoder.cpp
     src/core/executor.cpp
+    src/core/simulator.cpp
     src/loader/elf_loader.cpp
     src/logging/logger.cpp
     src/memory/memory.cpp
@@ -28,11 +29,6 @@ target_include_directories(riscv-core
 )
 
 add_executable(riscemu src/main.cpp)
-
-target_include_directories(riscemu
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
 
 target_link_libraries(riscemu PRIVATE riscv-core)
 
