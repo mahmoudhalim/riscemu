@@ -24,7 +24,7 @@ ExecutionResult CPU::step() {
   auto ir = Decoder::decode(mem_.read_word(cur_pc));
   logging::log(logging::Level::Trace, "cpu", "0x{:08x}: {}", cur_pc,
                to_string(ir.type));
-  ExecutionResult result = Executor::execute(ir, regs_, mem_, syscall_);
+  ExecutionResult result = executor::execute(ir, regs_, mem_, syscall_);
   ++instruction_count_;
   if (result.status != ExecutionStatus::Executed) {
     last_result_ = result;

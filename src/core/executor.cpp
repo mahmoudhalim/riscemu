@@ -6,53 +6,10 @@
 #include "riscv/instruction.h"
 #include "system/syscall.h"
 
-ExecutionResult Executor::execute(const DecodedInstruction& ir,
-                                  Registers& registers, Memory& memory,
-                                  Syscall& syscall) {
-  // Some handlers advance the PC before hitting their "unknown" branch, so
-  // snapshot the pre-fetch PC to report as the faulting address.
-  const uint32_t pc_before = registers.pc;
-  ExecutionResult result;
-  switch (ir.format) {
-  case InstructionFormat::R_TYPE:
-    result = Executor::execute_r_type(ir, registers);
-    break;
-  case InstructionFormat::I_TYPE:
-    result = Executor::execute_i_type(ir, registers, memory);
-    break;
-  case InstructionFormat::U_TYPE:
-    result = Executor::execute_u_type(ir, registers);
-    break;
-  case InstructionFormat::J_TYPE:
-    result = Executor::execute_jump(ir, registers);
-    break;
-  case InstructionFormat::B_TYPE:
-    result = Executor::execute_b_type(ir, registers);
-    break;
-  case InstructionFormat::S_TYPE:
-    result = Executor::execute_s_type(ir, registers, memory);
-    break;
-  case InstructionFormat::SYSTEM:
-    result = Executor::exec_system(ir, registers, syscall);
-    break;
-  case InstructionFormat::UNKNOWN:
-    result = {.status = ExecutionStatus::Faulted};
-    break;
-  }
-  if (result.status == ExecutionStatus::Faulted) {
-    result.fault.pc = pc_before;
-  }
-  return result;
-}
+namespace {
 
-ExecutionResult Executor::execute(const DecodedInstruction& ir,
-                                  Registers& registers, Memory& memory) {
-  Syscall syscall(memory);
-  return Executor::execute(ir, registers, memory, syscall);
-}
-
-ExecutionResult Executor::execute_r_type(const DecodedInstruction& ir,
-                                         Registers& registers) {
+ExecutionResult execute_r_type(const DecodedInstruction& ir,
+                               Registers& registers) {
   registers.pc += 4;
   uint8_t rd = ir.rd;
 
@@ -109,9 +66,8 @@ ExecutionResult Executor::execute_r_type(const DecodedInstruction& ir,
   return {};
 }
 
-ExecutionResult Executor::execute_i_type(const DecodedInstruction& ir,
-                                         Registers& registers,
-                                         const Memory& memory) {
+ExecutionResult execute_i_type(const DecodedInstruction& ir,
+                               Registers& registers, const Memory& memory) {
   uint8_t rd = ir.rd;
   uint32_t rs1 = registers.read(ir.rs1);
   int32_t imm = ir.imm;
@@ -184,8 +140,8 @@ ExecutionResult Executor::execute_i_type(const DecodedInstruction& ir,
   return {};
 }
 
-ExecutionResult Executor::execute_u_type(const DecodedInstruction& ir,
-                                         Registers& registers) {
+ExecutionResult execute_u_type(const DecodedInstruction& ir,
+                               Registers& registers) {
   uint8_t rd = ir.rd;
   int32_t imm = ir.imm;
   uint32_t pc_before = registers.pc;
@@ -210,15 +166,15 @@ ExecutionResult Executor::execute_u_type(const DecodedInstruction& ir,
   return {};
 }
 
-ExecutionResult Executor::execute_jump(const DecodedInstruction& ir,
-                                       Registers& registers) {
+ExecutionResult execute_jump(const DecodedInstruction& ir,
+                             Registers& registers) {
   registers.write(ir.rd, registers.pc + 4);
   registers.pc = registers.pc + ir.imm;
   return {};
 }
 
-ExecutionResult Executor::execute_b_type(const DecodedInstruction& ir,
-                                         Registers& registers) {
+ExecutionResult execute_b_type(const DecodedInstruction& ir,
+                               Registers& registers) {
   bool taken = false;
   switch (ir.type) {
   case InstructionType::BEQ:
@@ -253,8 +209,8 @@ ExecutionResult Executor::execute_b_type(const DecodedInstruction& ir,
   return {};
 }
 
-ExecutionResult Executor::execute_s_type(const DecodedInstruction& ir,
-                                         Registers& registers, Memory& memory) {
+ExecutionResult execute_s_type(const DecodedInstruction& ir,
+                               Registers& registers, Memory& memory) {
   uint32_t rs1 = registers.read(ir.rs1);
   uint32_t rs2 = registers.read(ir.rs2);
   int32_t imm = ir.imm;
@@ -276,8 +232,8 @@ ExecutionResult Executor::execute_s_type(const DecodedInstruction& ir,
   return {};
 }
 
-ExecutionResult Executor::exec_system(const DecodedInstruction& instr,
-                                      Registers& regs, Syscall& syscall) {
+ExecutionResult exec_system(const DecodedInstruction& instr, Registers& regs,
+                            Syscall& syscall) {
   if (instr.type == InstructionType::ECALL) {
     auto sys_result =
         syscall.handle(regs.read(17), regs.read(10), regs.read(11),
@@ -287,7 +243,7 @@ ExecutionResult Executor::exec_system(const DecodedInstruction& instr,
               .exit_code = sys_result.exit_code};
     }
     regs.write(10, static_cast<uint32_t>(sys_result.return_value));
-    regs.pc += 4; // resume after the ECALL
+    regs.pc += 4;
     return {};
   }
   if (instr.type == InstructionType::EBREAK) {
@@ -296,3 +252,47 @@ ExecutionResult Executor::exec_system(const DecodedInstruction& instr,
   }
   return {};
 }
+
+} // namespace
+
+namespace executor {
+
+ExecutionResult execute(const DecodedInstruction& ir, Registers& registers,
+                        Memory& memory, Syscall& syscall) {
+  // Some handlers advance the PC before hitting their "unknown" branch, so
+  // snapshot the pre-fetch PC to report as the faulting address.
+  const uint32_t pc_before = registers.pc;
+  ExecutionResult result;
+  switch (ir.format) {
+  case InstructionFormat::R_TYPE:
+    result = execute_r_type(ir, registers);
+    break;
+  case InstructionFormat::I_TYPE:
+    result = execute_i_type(ir, registers, memory);
+    break;
+  case InstructionFormat::U_TYPE:
+    result = execute_u_type(ir, registers);
+    break;
+  case InstructionFormat::J_TYPE:
+    result = execute_jump(ir, registers);
+    break;
+  case InstructionFormat::B_TYPE:
+    result = execute_b_type(ir, registers);
+    break;
+  case InstructionFormat::S_TYPE:
+    result = execute_s_type(ir, registers, memory);
+    break;
+  case InstructionFormat::SYSTEM:
+    result = exec_system(ir, registers, syscall);
+    break;
+  case InstructionFormat::UNKNOWN:
+    result = {.status = ExecutionStatus::Faulted};
+    break;
+  }
+  if (result.status == ExecutionStatus::Faulted) {
+    result.fault.pc = pc_before;
+  }
+  return result;
+}
+
+} // namespace executor

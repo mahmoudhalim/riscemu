@@ -2,6 +2,7 @@
 #include "core/executor.h"
 #include "core/registers.h"
 #include "memory/memory.h"
+#include "system/syscall.h"
 
 #include <filesystem>
 #include <fstream>
@@ -49,6 +50,7 @@ TEST(LuiTestProgram, RunsAllIAndUTypeInstructions) {
 
   auto path = write_temp_binary(bin);
   Memory mem(64);
+  Syscall sys{mem};
   size_t loaded = mem.load_file(path);
   std::filesystem::remove(path);
 
@@ -58,7 +60,7 @@ TEST(LuiTestProgram, RunsAllIAndUTypeInstructions) {
   for (uint32_t pc = 0; pc < loaded; pc += 4) {
     auto ir = Decoder::decode(mem.read_word(pc));
     regs.pc = pc;
-    Executor::execute(ir, regs, mem);
+    executor::execute(ir, regs, mem, sys);
   }
 
   // I-type

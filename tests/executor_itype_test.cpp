@@ -2,12 +2,13 @@
 #include "core/executor.h"
 #include "core/registers.h"
 #include "memory/memory.h"
+#include "system/syscall.h"
 
 #include <gtest/gtest.h>
-#include <stdexcept>
 
 namespace {
 Memory mem(1024);
+Syscall sys{mem};
 constexpr uint32_t encode_i(uint8_t rd, uint8_t rs1, uint8_t funct3,
                             int32_t imm, uint8_t funct7 = 0,
                             uint8_t opcode = 0x13) {
@@ -26,7 +27,7 @@ TEST(ExecutorITypeTest, AddiAddsImmediate) {
   Registers regs;
   regs.write(1, 10);
   auto ir = Decoder::decode(encode_i(3, 1, 0b000, 5));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 15u);
 }
 
@@ -34,7 +35,7 @@ TEST(ExecutorITypeTest, SltiSignedComparison) {
   Registers regs;
   regs.write(1, static_cast<uint32_t>(-1));
   auto ir = Decoder::decode(encode_i(3, 1, 0b010, 1));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 1u);
 }
 
@@ -43,14 +44,14 @@ TEST(ExecutorITypeTest, SltiuUnsignedComparison) {
   // rs1 = 0xFFFFFFFF, imm = 1 (zero-extended). Unsigned: rs1 < imm is false.
   regs.write(1, 0xFFFFFFFFu);
   auto ir = Decoder::decode(encode_i(3, 1, 0b011, 1));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 0u);
 
   // rs1 = 0, imm = 1. Unsigned: 0 < 1 is true.
   Registers regs2;
   regs2.write(1, 0u);
   auto ir2 = Decoder::decode(encode_i(3, 1, 0b011, 1));
-  Executor::execute(ir2, regs2, mem);
+  executor::execute(ir2, regs2, mem, sys);
   EXPECT_EQ(regs2.read(3), 1u);
 }
 
@@ -59,7 +60,7 @@ TEST(ExecutorITypeTest, SlliShiftsLeft) {
   regs.write(1, 1u);
   // SLLI: funct3=0b001, shamt=4, funct7=0.
   auto ir = Decoder::decode(encode_i(3, 1, 0b001, 4, 0));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 16u);
 }
 
@@ -68,7 +69,7 @@ TEST(ExecutorITypeTest, SrliShiftsRightLogical) {
   regs.write(1, 0b1000u);
   // SRLI: funct3=0b101, shamt=2, funct7=0.
   auto ir = Decoder::decode(encode_i(3, 1, 0b101, 2, 0));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 0b10u);
 }
 
@@ -77,7 +78,7 @@ TEST(ExecutorITypeTest, SraiShiftsRightArithmetic) {
   regs.write(1, 0x80000000u);
   // SRAI: funct3=0b101, shamt=1, funct7=0b0100000.
   auto ir = Decoder::decode(encode_i(3, 1, 0b101, 1, 0b0100000));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 0xC0000000u);
 }
 
@@ -88,7 +89,7 @@ TEST(ExecutorITypeTest, SlliShamtComesFromImmediateLow5Bits) {
   Registers regs;
   regs.write(1, 1u);
   auto ir = Decoder::decode(encode_i(3, 1, 0b001, 0x804, 0));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.read(3), 16u);
 }
 
@@ -98,7 +99,7 @@ TEST(ExecutorITypeTest, NonJumpITypeAdvancesPcByFour) {
   regs.pc = 0x100;
   regs.write(1, 1u);
   auto ir = Decoder::decode(encode_i(3, 1, 0b000, 5));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
   EXPECT_EQ(regs.pc, 0x104u);
 }
 
@@ -108,7 +109,7 @@ TEST(ExecutorITypeTest, JalrWritesLinkAndJumpsToTarget) {
   regs.pc = 0x80;
   regs.write(2, 0x200);
   auto ir = Decoder::decode(encode_i(1, 2, 0b000, 16, 0, JALR_OPCODE));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
 
   EXPECT_EQ(regs.read(1), 0x84u); // link
   EXPECT_EQ(regs.pc, 0x210u);     // (0x200 + 16) & ~1
@@ -121,7 +122,7 @@ TEST(ExecutorITypeTest, JalrClearsLsbOfTarget) {
   regs.write(2, 0x100);
   auto ir = Decoder::decode(
       encode_i(1, 2, 0b000, 7, 0, JALR_OPCODE)); // 0x100 + 7 = 0x107
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
 
   EXPECT_EQ(regs.pc, 0x106u);
 }
@@ -132,7 +133,7 @@ TEST(ExecutorITypeTest, JalrWithRdZeroDoesNotWriteLink) {
   regs.pc = 0x20;
   regs.write(2, 0x300);
   auto ir = Decoder::decode(encode_i(0, 2, 0b000, 0, 0, JALR_OPCODE));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
 
   EXPECT_EQ(regs.read(0), 0u);
   EXPECT_EQ(regs.pc, 0x300u);
@@ -144,7 +145,7 @@ TEST(ExecutorITypeTest, JalrRdEqualsRs1WritesLinkAfterReadingBase) {
   regs.pc = 0x10;
   regs.write(2, 0x400);
   auto ir = Decoder::decode(encode_i(2, 2, 0b000, 8, 0, JALR_OPCODE));
-  Executor::execute(ir, regs, mem);
+  executor::execute(ir, regs, mem, sys);
 
   EXPECT_EQ(regs.read(2), 0x14u); // link
   EXPECT_EQ(regs.pc, 0x408u);     // 0x400 + 8
