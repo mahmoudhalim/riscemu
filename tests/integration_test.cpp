@@ -30,7 +30,9 @@ std::filesystem::path elf_path(const char* name) {
 TEST(IntegrationTest, Exit42TraversesCrtAndHonorsExitCode) {
   Simulator sim;
   ASSERT_TRUE(sim.load(elf_path("exit42.elf")));
-  sim.run();
+  auto outcome = sim.run();
+  ASSERT_TRUE(outcome.has_value());
+  EXPECT_EQ(*outcome, 42);
   EXPECT_TRUE(sim.halted());
   EXPECT_EQ(sim.exit_code(), 42);
 }
@@ -41,7 +43,9 @@ TEST(IntegrationTest, DirectWriteEmitsBytes) {
   Simulator sim;
   ASSERT_TRUE(sim.load(elf_path("write_test.elf")));
   CaptureStdout capture;
-  sim.run();
+  auto outcome = sim.run();
+  ASSERT_TRUE(outcome.has_value());
+  EXPECT_EQ(*outcome, 0);
   EXPECT_TRUE(sim.halted());
   EXPECT_EQ(sim.exit_code(), 0);
   EXPECT_NE(capture.str().find("write-ok\n"), std::string::npos);
@@ -52,7 +56,9 @@ TEST(IntegrationTest, PrintfExercisesBrkFstatWrite) {
   Simulator sim;
   ASSERT_TRUE(sim.load(elf_path("printf_test.elf")));
   CaptureStdout capture;
-  sim.run();
+  auto outcome = sim.run();
+  ASSERT_TRUE(outcome.has_value());
+  EXPECT_EQ(*outcome, 0);
   EXPECT_TRUE(sim.halted());
   EXPECT_EQ(sim.exit_code(), 0);
   EXPECT_NE(capture.str().find("printf-ok\n"), std::string::npos);

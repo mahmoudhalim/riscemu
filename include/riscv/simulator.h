@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+#include "riscv/execution.h"
+
 // High-level simulator front-end. Owns the machine components (memory, the
 // Syscall front-end, and the CPU core) behind an opaque Impl so consumers of
 // the public API never see the internal headers. This is the only entry point
@@ -28,7 +30,10 @@ public:
   load(const std::filesystem::path& path);
 
   void step();
-  void run();
+
+  // Run until the guest exits, faults, or the fetch walks off the loaded
+  // image. Returns the guest's exit code, or the fault that stopped it.
+  [[nodiscard]] RunOutcome run();
 
   uint64_t instruction_count() const;
   bool halted() const;

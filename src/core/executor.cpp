@@ -1,31 +1,48 @@
 #include "executor.h"
+
+#include <cstdint>
+
 #include "core/registers.h"
 #include "riscv/instruction.h"
 #include "system/syscall.h"
-#include <cstdint>
-#include <stdexcept>
 
 ExecutionResult Executor::execute(const DecodedInstruction& ir,
                                   Registers& registers, Memory& memory,
                                   Syscall& syscall) {
+  // Some handlers advance the PC before hitting their "unknown" branch, so
+  // snapshot the pre-fetch PC to report as the faulting address.
+  const uint32_t pc_before = registers.pc;
+  ExecutionResult result;
   switch (ir.format) {
   case InstructionFormat::R_TYPE:
-    return Executor::execute_r_type(ir, registers);
+    result = Executor::execute_r_type(ir, registers);
+    break;
   case InstructionFormat::I_TYPE:
-    return Executor::execute_i_type(ir, registers, memory);
+    result = Executor::execute_i_type(ir, registers, memory);
+    break;
   case InstructionFormat::U_TYPE:
-    return Executor::execute_u_type(ir, registers);
+    result = Executor::execute_u_type(ir, registers);
+    break;
   case InstructionFormat::J_TYPE:
-    return Executor::execute_jump(ir, registers);
+    result = Executor::execute_jump(ir, registers);
+    break;
   case InstructionFormat::B_TYPE:
-    return Executor::execute_b_type(ir, registers);
+    result = Executor::execute_b_type(ir, registers);
+    break;
   case InstructionFormat::S_TYPE:
-    return Executor::execute_s_type(ir, registers, memory);
+    result = Executor::execute_s_type(ir, registers, memory);
+    break;
   case InstructionFormat::SYSTEM:
-    return Executor::exec_system(ir, registers, syscall);
-  default:
-    throw std::runtime_error("How Did You do this ?");
+    result = Executor::exec_system(ir, registers, syscall);
+    break;
+  case InstructionFormat::UNKNOWN:
+    result = {.status = ExecutionStatus::Faulted};
+    break;
   }
+  if (result.status == ExecutionStatus::Faulted) {
+    result.fault.pc = pc_before;
+  }
+  return result;
 }
 
 ExecutionResult Executor::execute(const DecodedInstruction& ir,
@@ -87,10 +104,11 @@ ExecutionResult Executor::execute_r_type(const DecodedInstruction& ir,
 
   [[unlikely]]
   default:
-    throw std::runtime_error("Unknown R type Instruction");
+    return {.status = ExecutionStatus::Faulted};
   }
   return {};
 }
+
 ExecutionResult Executor::execute_i_type(const DecodedInstruction& ir,
                                          Registers& registers,
                                          const Memory& memory) {
@@ -161,7 +179,7 @@ ExecutionResult Executor::execute_i_type(const DecodedInstruction& ir,
 
   [[unlikely]]
   default:
-    throw std::runtime_error("Unknown I type Instruction");
+    return {.status = ExecutionStatus::Faulted};
   }
   return {};
 }
@@ -187,7 +205,7 @@ ExecutionResult Executor::execute_u_type(const DecodedInstruction& ir,
     break;
   [[unlikely]]
   default:
-    throw std::runtime_error("Unknown U type Instruction");
+    return {.status = ExecutionStatus::Faulted};
   }
   return {};
 }
@@ -224,7 +242,7 @@ ExecutionResult Executor::execute_b_type(const DecodedInstruction& ir,
     break;
   [[unlikely]]
   default:
-    throw std::runtime_error("Unknown B type Instruction");
+    return {.status = ExecutionStatus::Faulted};
   }
 
   if (taken) {
@@ -253,28 +271,28 @@ ExecutionResult Executor::execute_s_type(const DecodedInstruction& ir,
     break;
   [[unlikely]]
   default:
-    throw std::runtime_error("Unknown S type Instruction");
+    return {.status = ExecutionStatus::Faulted};
   }
   return {};
 }
 
 ExecutionResult Executor::exec_system(const DecodedInstruction& instr,
                                       Registers& regs, Syscall& syscall) {
-  ExecutionResult result;
   if (instr.type == InstructionType::ECALL) {
     auto sys_result =
         syscall.handle(regs.read(17), regs.read(10), regs.read(11),
                        regs.read(12), regs.read(13));
     if (sys_result.should_exit) {
-      result.halt = true;
-      result.exit_code = sys_result.exit_code;
-    } else {
-      regs.write(10, static_cast<uint32_t>(sys_result.return_value));
-      regs.pc += 4; // resume after the ECALL
+      return {.status = ExecutionStatus::Exited,
+              .exit_code = sys_result.exit_code};
     }
-  } else if (instr.type == InstructionType::EBREAK) {
-    result.halt = true;
-    result.exit_code = 0;
+    regs.write(10, static_cast<uint32_t>(sys_result.return_value));
+    regs.pc += 4; // resume after the ECALL
+    return {};
   }
-  return result;
+  if (instr.type == InstructionType::EBREAK) {
+    // Debug stop: treat as an exit with status 0.
+    return {.status = ExecutionStatus::Exited, .exit_code = 0};
+  }
+  return {};
 }

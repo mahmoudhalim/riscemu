@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "core/executor.h"
 #include "memory/memory.h"
 #include "registers.h"
 #include "system/syscall.h"
@@ -13,8 +14,12 @@ class CPU {
 public:
   CPU(Memory& mem, Syscall& syscall);
 
-  void step();
-  void run();
+  // Execute one instruction. Every path returns; faults are reported through
+  // the result, never thrown.
+  ExecutionResult step();
+  // Run until the guest exits, faults, or the fetch walks off the loaded
+  // image. Maps each stop to a RunOutcome (FellOffEnd is a fetch fault).
+  RunOutcome run();
 
   // Prepare for execution of a freshly loaded image. Called by Simulator after
   // loading an ELF. Resets all architectural state, then points the PC at
@@ -46,4 +51,5 @@ private:
   bool halted_ = false;
   int exit_code_ = 0;
   uint64_t instruction_count_ = 0;
+  ExecutionResult last_result_{};
 };

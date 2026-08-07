@@ -56,6 +56,11 @@ int main(int argc, char** argv) {
     std::print(std::cerr, "riscemu: {}\n", load.error());
     return 1;
   }
-  sim.run();
-  return sim.halted() ? sim.exit_code() : 0;
+  auto outcome = sim.run();
+  if (!outcome) {
+    std::print(std::cerr, "riscemu: guest faulted: {} at pc=0x{:08x}\n",
+               to_string(outcome.error().kind), outcome.error().pc);
+    return 1;
+  }
+  return *outcome;
 }

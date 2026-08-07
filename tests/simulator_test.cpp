@@ -57,7 +57,9 @@ TEST(SimulatorTest, LoadAndRunPropagatesExitCode) {
   std::filesystem::remove(path);
 
   ASSERT_TRUE(result.has_value());
-  sim.run();
+  auto outcome = sim.run();
+  ASSERT_TRUE(outcome.has_value());
+  EXPECT_EQ(*outcome, 42);
   EXPECT_TRUE(sim.halted());
   EXPECT_EQ(sim.exit_code(), 42);
 }
@@ -86,7 +88,8 @@ TEST(SimulatorTest, RunCountsExecutedInstructions) {
   ASSERT_TRUE(sim.load(path));
   std::filesystem::remove(path);
 
-  sim.run();
+  auto outcome = sim.run();
+  EXPECT_FALSE(outcome.has_value()); // fetch walks off the 12-byte image
 
   EXPECT_EQ(sim.instruction_count(), 3u);
   EXPECT_FALSE(sim.halted());

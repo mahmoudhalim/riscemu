@@ -81,8 +81,10 @@ TEST(CpuRunTest, ExecutesLinearProgramAndStopsAtProgramEnd) {
   ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  machine.cpu.run();
+  auto outcome = machine.cpu.run();
 
+  ASSERT_FALSE(outcome.has_value()) << "expected a fetch fault";
+  EXPECT_EQ(outcome.error().kind, FaultKind::FetchOutsideEnd);
   EXPECT_EQ(machine.cpu.regs().read(1), 1u);
   EXPECT_EQ(machine.cpu.regs().read(2), 2u);
   EXPECT_EQ(machine.cpu.regs().read(3), 3u);
@@ -134,8 +136,9 @@ TEST(CpuRunTest, ForwardJalSkipsOverInstructions) {
   ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  machine.cpu.run();
+  auto outcome = machine.cpu.run();
 
+  ASSERT_FALSE(outcome.has_value()) << "expected a fetch fault";
   EXPECT_EQ(machine.cpu.regs().read(1), 1u);
   EXPECT_EQ(machine.cpu.regs().read(2), 2u);
   EXPECT_EQ(machine.cpu.regs().read(3), 3u);
@@ -225,8 +228,9 @@ TEST(CpuRunTest, JalrExitsProgramByJumpingOutOfBounds) {
   ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  machine.cpu.run();
+  auto outcome = machine.cpu.run();
 
+  ASSERT_FALSE(outcome.has_value()) << "expected a fetch fault";
   EXPECT_EQ(machine.cpu.regs().read(1), 0x10000u);
   // PC was set to 0x10000 by the JALR, exiting the run loop.
   EXPECT_GE(machine.cpu.regs().pc, 12u);
@@ -260,8 +264,9 @@ TEST(CpuRunTest, BneLoopCalculatesSum) {
   ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  machine.cpu.run();
+  auto outcome = machine.cpu.run();
 
+  ASSERT_FALSE(outcome.has_value()) << "expected a fetch fault";
   EXPECT_EQ(machine.cpu.regs().read(2), 6u); // 3+2+1 = 6
   EXPECT_EQ(machine.cpu.regs().read(1), 0u);
 }
@@ -292,8 +297,10 @@ TEST(CpuRunTest, EcallExitHaltsWithExitCode) {
   ASSERT_TRUE(machine.load(path));
   std::filesystem::remove(path);
 
-  machine.cpu.run();
+  auto outcome = machine.cpu.run();
 
+  ASSERT_TRUE(outcome.has_value()) << "expected exit via SYS_exit";
+  EXPECT_EQ(*outcome, 7);
   EXPECT_TRUE(machine.cpu.halted());
   EXPECT_EQ(machine.cpu.exit_code(), 7);
   EXPECT_EQ(machine.cpu.regs().read(10), 7u);

@@ -40,7 +40,7 @@ Simulator::load(const std::filesystem::path& path) {
 
 void Simulator::step() { impl_->cpu.step(); }
 
-void Simulator::run() { impl_->cpu.run(); }
+RunOutcome Simulator::run() { return impl_->cpu.run(); }
 
 uint64_t Simulator::instruction_count() const {
   return impl_->cpu.instruction_count();

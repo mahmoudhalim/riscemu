@@ -1,13 +1,26 @@
 #pragma once
 
+#include <cstdint>
+
 #include "memory/memory.h"
+#include "riscv/execution.h"
 #include "riscv/instruction.h"
+
 class Registers;
 class Syscall;
 
+// Per-instruction result. Unlike RunOutcome at the run seam, a single step can
+// simply "run" (nothing terminal), so this keeps an explicit Executed state.
+enum class ExecutionStatus {
+  Executed,
+  Exited,  // guest terminated (sys_exit / EBREAK); exit_code is valid
+  Faulted, // illegal instruction; fault is valid (pc stamped by execute())
+};
+
 struct ExecutionResult {
-  bool halt = false;
+  ExecutionStatus status = ExecutionStatus::Executed;
   int exit_code = 0;
+  FaultReport fault{};
 };
 
 class Executor {

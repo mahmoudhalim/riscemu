@@ -4,7 +4,6 @@
 #include "memory/memory.h"
 
 #include <gtest/gtest.h>
-#include <stdexcept>
 
 namespace {
 Memory mem(1024);
@@ -129,10 +128,13 @@ TEST(ExecutorRTypeTest, AndsRegisters) {
   EXPECT_EQ(regs.read(12), 0b1000u);
 }
 
-TEST(ExecutorRTypeTest, ThrowsOnUnsupportedFormat) {
+TEST(ExecutorRTypeTest, FaultsOnUnsupportedFormat) {
   Registers regs;
   // All-zero instruction has opcode 0 -> UNKNOWN format.
   auto ir = Decoder::decode(0x00000000);
 
-  EXPECT_THROW(Executor::execute(ir, regs, mem), std::runtime_error);
+  auto result = Executor::execute(ir, regs, mem);
+  EXPECT_EQ(result.status, ExecutionStatus::Faulted);
+  EXPECT_EQ(result.fault.kind, FaultKind::IllegalInstruction);
+  EXPECT_EQ(result.fault.pc, 0u); // PC unchanged for UNKNOWN format
 }

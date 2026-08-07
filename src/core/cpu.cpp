@@ -19,25 +19,44 @@ void CPU::initialize(uint32_t entry_point, uint32_t program_end,
   instruction_count_ = 0;
 }
 
-void CPU::step() {
+ExecutionResult CPU::step() {
   uint32_t cur_pc = regs_.pc;
   auto ir = Decoder::decode(mem_.read_word(cur_pc));
   logging::log(logging::Level::Trace, "cpu", "0x{:08x}: {}", cur_pc,
                to_string(ir.type));
-  auto result = Executor::execute(ir, regs_, mem_, syscall_);
+  ExecutionResult result = Executor::execute(ir, regs_, mem_, syscall_);
   ++instruction_count_;
-  if (result.halt) {
+  if (result.status != ExecutionStatus::Executed) {
+    last_result_ = result;
     halted_ = true;
-    exit_code_ = result.exit_code;
+    if (result.status == ExecutionStatus::Exited) {
+      exit_code_ = result.exit_code;
+    }
   }
+  return result;
 }
 
-void CPU::run() {
+RunOutcome CPU::run() {
   logging::log(logging::Level::Info, "cpu", "starting at 0x{:08x}", regs_.pc);
   while (regs_.pc < program_end_addr_ && !halted_) {
     step();
   }
+  if (!halted_) {
+    // The loop stopped because the fetch walked off the loaded image;
+    // treat that as an i-fetch access fault.
+    logging::log(logging::Level::Info, "cpu",
+                 "halted: fetch outside program image at 0x{:08x}", regs_.pc);
+    return std::unexpected(
+        FaultReport{.kind = FaultKind::FetchOutsideEnd, .pc = regs_.pc});
+  }
+  if (last_result_.status == ExecutionStatus::Faulted) {
+    logging::log(logging::Level::Info, "cpu", "halted: {} at pc=0x{:08x}",
+                 to_string(last_result_.fault.kind), last_result_.fault.pc);
+    return std::unexpected(last_result_.fault);
+  }
   logging::log(logging::Level::Info, "cpu",
-               "halted: exit_code={} after {} instructions", exit_code_,
-               instruction_count_);
+               "halted: exit_code={} after {} "
+               "instructions",
+               exit_code_, instruction_count_);
+  return last_result_.exit_code;
 }
